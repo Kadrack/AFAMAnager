@@ -906,7 +906,7 @@ class SecretariatController extends AbstractController
 
         fwrite($fh, '{');
 
-        $old = array('\{\{TITRE\}\}', '\{\{SEXE\}\}', '\{\{NOM\}\}', '\{\{PRENOM\}\}', '\{\{DOJO_ID\}\}', '\{\{DOJO_NOM\}\}', '\{\{ADRESSE\}\}', '\{\{CODE_POSTALE\}\}', '\{\{LOCALITE\}\}', '\{\{DATE_DE_NAISSANCE\}\}', '\{\{GSM\}\}', '\{\{EMAIL\}\}', '\{\{LICENCE_ID\}\}', '\{\{DATE_ECHEANCE_FR\}\}', '\{\{ENFANT\}\}', '\{\{ADULTE\}\}', '\{\{PAYS\}\}');
+        $old = array('\{\{TITLE\}\}', '\{\{SEX\}\}', '\{\{NAME\}\}', '\{\{FIRSTNAME\}\}', '\{\{DOJO_ID\}\}', '\{\{DOJO\}\}', '\{\{ADDRESS\}\}', '\{\{ZIP\}\}', '\{\{CITY\}\}', '\{\{BIRTHDAY\}\}', '\{\{GSM\}\}', '\{\{MAIL\}\}', '\{\{LICENCE_ID\}\}', '\{\{LICENCE_END\}\}', '\{\{CHILDREN\}\}', '\{\{ADULT\}\}', '\{\{COUNTRY\}\}', '\{\{GRADE\}\}');
 
         $children_limit = new DateTime('-14 year today');
 
@@ -928,15 +928,15 @@ class SecretariatController extends AbstractController
         if ($member->getMemberBirthday() > $children_limit)
         {
             $children='X';
-            $adult='';
+            $adult='-';
         }
         else
         {
-            $children='';
+            $children='-';
             $adult='X';
         }
 
-        $new = array($title, utf8_decode($sex), utf8_decode($member->getMemberName()), utf8_decode($member->getMemberFirstname()), utf8_decode($club->getClubId()), utf8_decode($club->getClubName()), utf8_decode($member->getMemberAddress()), utf8_decode($member->getMemberZip()), utf8_decode($member->getMemberCity()), utf8_decode($member->getMemberBirthday()->format('d/m/Y')), utf8_decode($member->getMemberPhone()), utf8_decode($member->getMemberEmail()), utf8_decode($member->getMemberId()), utf8_decode($member->getMemberLastLicence()->getMemberLicenceDeadline()->format('d/m/Y')), $children, $adult, utf8_decode($listData->getCountryName($member->getMemberCountry())));
+        $new = array($title, utf8_decode($sex), utf8_decode($member->getMemberName()), utf8_decode($member->getMemberFirstname()), utf8_decode($club->getClubId()), utf8_decode($club->getClubName()), utf8_decode($member->getMemberAddress()), utf8_decode($member->getMemberZip()), utf8_decode($member->getMemberCity()), utf8_decode($member->getMemberBirthday()->format('d/m/Y')), utf8_decode($member->getMemberPhone()), utf8_decode($member->getMemberEmail()), utf8_decode($member->getMemberId()), utf8_decode($member->getMemberLastLicence()->getMemberLicenceDeadline()->format('d/m/Y')), $children, $adult, utf8_decode($listData->getCountryName($member->getMemberCountry())), utf8_decode($listData->getGrade($member->getMemberLastGrade()->getGradeRank())));
 
         $newphrase .= str_replace($old, $new, $file);
 
@@ -2002,7 +2002,7 @@ class SecretariatController extends AbstractController
 
             fwrite($fh, '{');
 
-            $old = array('\{\{TITRE\}\}', '\{\{SEXE\}\}', '\{\{NOM\}\}', '\{\{PRENOM\}\}', '\{\{DOJO_ID\}\}', '\{\{DOJO_NOM\}\}', '\{\{ADRESSE\}\}', '\{\{CODE_POSTALE\}\}', '\{\{LOCALITE\}\}', '\{\{DATE_DE_NAISSANCE\}\}', '\{\{GSM\}\}', '\{\{EMAIL\}\}', '\{\{LICENCE_ID\}\}', '\{\{DATE_ECHEANCE_FR\}\}', '\{\{ENFANT\}\}', '\{\{ADULTE\}\}', '\{\{PAYS\}\}');
+            $old = array('\{\{TITLE\}\}', '\{\{SEX\}\}', '\{\{NAME\}\}', '\{\{FIRSTNAME\}\}', '\{\{DOJO_ID\}\}', '\{\{DOJO\}\}', '\{\{ADDRESS\}\}', '\{\{ZIP\}\}', '\{\{CITY\}\}', '\{\{BIRTHDAY\}\}', '\{\{GSM\}\}', '\{\{MAIL\}\}', '\{\{LICENCE_ID\}\}', '\{\{LICENCE_END\}\}', '\{\{CHILDREN\}\}', '\{\{ADULT\}\}', '\{\{COUNTRY\}\}', '\{\{GRADE\}\}');
 
             $children_limit = new DateTime('-14 year today');
 
@@ -2035,15 +2035,15 @@ class SecretariatController extends AbstractController
                 if ($member['Birthday'] > $children_limit)
                 {
                     $children='X';
-                    $adult='';
+                    $adult='-';
                 }
                 else
                 {
-                    $children='';
+                    $children='-';
                     $adult='X';
                 }
 
-                $new = array($title, utf8_decode($sex), utf8_decode($member['Name']), utf8_decode($member['FirstName']), utf8_decode($club->getClubId()), utf8_decode($club->getClubName()), utf8_decode($member['Address']), utf8_decode($member['Zip']), utf8_decode($member['City']), utf8_decode($member['Birthday']->format('d/m/Y')), utf8_decode($member['Phone']), utf8_decode($member['Email']), utf8_decode($member['Id']), utf8_decode($member['Deadline']->format('d/m/Y')), $children, $adult, utf8_decode($listData->getCountryName($member['Country'])));
+                $new = array($title, utf8_decode($sex), utf8_decode($member['Name']), utf8_decode($member['FirstName']), utf8_decode($club->getClubId()), utf8_decode($club->getClubName()), utf8_decode($member['Address']), utf8_decode($member['Zip']), utf8_decode($member['City']), utf8_decode($member['Birthday']->format('d/m/Y')), utf8_decode($member['Phone']), utf8_decode($member['Email']), utf8_decode($member['Id']), utf8_decode($member['Deadline']->format('d/m/Y')), $children, $adult, utf8_decode($listData->getCountryName($member['Country'])), utf8_decode($listData->getGrade($member['Grade'])));
 
                 $newphrase .= str_replace($old, $new, $file);
 
