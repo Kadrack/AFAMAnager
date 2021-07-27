@@ -101,10 +101,10 @@ class CommissionMember
     }
 
     /**
-     * @param DateTime $commission_member_date_out
+     * @param DateTime|null $commission_member_date_out
      * @return $this
      */
-    public function setCommissionMemberDateOut(DateTime $commission_member_date_out): self
+    public function setCommissionMemberDateOut(?DateTime $commission_member_date_out): self
     {
         $this->commission_member_date_out = $commission_member_date_out;
 

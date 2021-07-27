@@ -60,8 +60,8 @@ class SecretariatType extends AbstractType
             case 'commissionMemberAdd':
                 $this->commissionMemberAdd($builder);
                 break;
-            case 'commissionMemberDelete':
-                $this->commissionMemberDelete($builder);
+            case 'commissionMemberEdit':
+                $this->commissionMemberEdit($builder);
                 break;
             case 'printStamp':
                 $this->printStamp($builder);
@@ -245,15 +245,15 @@ class SecretariatType extends AbstractType
     /**
      * @param FormBuilderInterface $builder
      */
-    private function commissionMemberDelete(FormBuilderInterface $builder)
+    private function commissionMemberEdit(FormBuilderInterface $builder)
     {
         $builder
             ->add('MemberId', IntegerType::class, array('label' => 'N° de licence : ', 'disabled' => true, 'mapped' => false))
             ->add('MemberFirstname', TextType::class, array('label' => 'Prénom : ', 'disabled' => true, 'mapped' => false))
             ->add('MemberName', TextType::class, array('label' => 'Nom : ', 'disabled' => true, 'mapped' => false))
-            ->add('CommissionMemberDateIn', DateType::class, array('label' => 'Début de mandat : ', 'widget' => 'single_text', 'disabled' => true))
-            ->add('CommissionMemberDateOut', DateType::class, array('label' => 'Fin de mandat : ', 'widget' => 'single_text'))
-            ->add('Submit', SubmitType::class, array('label' => 'Supprimer'))
+            ->add('CommissionMemberDateIn', DateType::class, array('label' => 'Début de mandat : ', 'widget' => 'single_text'))
+            ->add('CommissionMemberDateOut', DateType::class, array('label' => 'Fin de mandat : ', 'widget' => 'single_text', 'required' => false))
+            ->add('Submit', SubmitType::class, array('label' => 'Modifier'))
         ;
     }
 
