@@ -21,7 +21,19 @@
         {% for commission in commissions %}
             <tr>
                 <td class="align-middle">{{ commission.getCommissionName() }}</td>
-                <td class="align-middle"><a class="btn btn-primary" href="{{ path('secretariat-commissionDetail', {'commission': commission.commissionId()}) }}">Liste des Membres</a></td>
+                <td class="align-middle text-center">
+                    <div class="btn-group" role="group" aria-label="Commandes">
+                        <button type="button" class="btn btn-primary">Commandes</button>
+                        <div class="btn-group" role="group">
+                            <button id="btnGroupDrop1" type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"></button>
+                            <div class="dropdown-menu" aria-labelledby="btnGroupDrop1" style="">
+                                <a class="dropdown-item" href="{{ path('secretariat-commissionDetails', {'commission': commission.commissionId()}) }}">Liste des Membres</a>
+                                <a class="dropdown-item" href="{{ path('secretariat-commissionHistory', {'commission': commission.commissionId()}) }}">Historique</a>
+                                <a class="dropdown-item" href="{{ path('secretariat-commissionRename', {'commission': commission.commissionId()}) }}">Renommer</a>
+                            </div>
+                        </div>
+                    </div>
+                </td>
             </tr>
         {% endfor %}
         </tbody>

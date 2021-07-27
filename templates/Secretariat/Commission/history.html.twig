@@ -1,0 +1,38 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}
+    AFA-Manager
+{% endblock %}
+
+{% block stylesheets %}
+{% endblock %}
+
+{% block body %}
+    <h1>{{ commission.commissionName() }}</h1>
+    <a class="btn btn-primary" href="{{ path('secretariat-commissionMemberAdd', {'commission': commission.commissionId()}) }}">Ajouter</a>
+    <table class="table table-sm table-hover">
+        <thead>
+            <tr>
+                <th>N° de licence</th>
+                <th>Prénom</th>
+                <th>Nom</th>
+                <th>Début de mandat</th>
+                <th>Fin de mandat</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for member in members %}
+            <tr>
+                <td class="align-middle">{{ member.Id }}</td>
+                <td class="align-middle">{{ member.Firstname|title }}</td>
+                <td class="align-middle">{{ member.Name|title }}</td>
+                <td class="align-middle">{{ member.Start|date("d/m/Y") }}</td>
+                <td class="align-middle">{{ member.End|date("d/m/Y") }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}
+
+{% block javascripts %}
+{% endblock %}

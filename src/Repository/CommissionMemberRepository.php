@@ -43,4 +43,23 @@ class CommissionMemberRepository extends ServiceEntityRepository
             ->getQuery()
             ->getArrayResult();
     }
+
+    /**
+     * @param int $commission
+     * @return array|null
+     */
+    public function getCommissionHistory(int $commission): ?array
+    {
+        $qb = $this->createQueryBuilder('c');
+
+        return $qb->select('c.commission_member_id', 'm.member_id AS Id', 'm.member_firstname AS Firstname', 'm.member_name AS Name', 'c.commission_member_date_in AS Start', 'c.commission_member_date_out AS End')
+            ->join(Member::class, 'm', 'WITH', $qb->expr()->eq('c.commission_member', 'm.member_id'))
+            ->where($qb->expr()->eq('c.commission', $commission))
+            ->andWhere($qb->expr()->isNotNull('c.commission_member_date_out'))
+            ->orderBy('c.commission_member_date_out', 'DESC')
+            ->addOrderBy('m.member_firstname', 'ASC')
+            ->addOrderBy('m.member_name', 'ASC')
+            ->getQuery()
+            ->getArrayResult();
+    }
 }
