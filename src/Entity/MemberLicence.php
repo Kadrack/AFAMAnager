@@ -32,32 +32,32 @@ class MemberLicence
     private DateTime $member_licence_update;
 
     /**
-     * @var DateTime
+     * @var DateTime|null
      *
      * @ORM\Column(type="date", nullable=true)
      */
-    private DateTime $member_licence_deadline;
+    private ?DateTime $member_licence_deadline;
 
     /**
-     * @var DateTime
+     * @var DateTime|null
      *
      * @ORM\Column(type="date", nullable=true)
      */
-    private DateTime $member_licence_medical_certificate;
+    private ?DateTime $member_licence_medical_certificate;
 
     /**
-     * @var DateTime
+     * @var DateTime|null
      *
      * @ORM\Column(type="date", nullable=true)
      */
-    private DateTime $member_licence_payment_date;
+    private ?DateTime $member_licence_payment_date;
 
     /**
-     * @var int
+     * @var int|null
      *
      * @ORM\Column(type="integer", nullable=true)
      */
-    private int $member_licence_payment_value;
+    private ?int $member_licence_payment_value;
 
     /**
      * @var int
@@ -137,10 +137,10 @@ class MemberLicence
     }
 
     /**
-     * @param DateTime $member_licence_deadline
+     * @param DateTime|null $member_licence_deadline
      * @return $this
      */
-    public function setMemberLicenceDeadline(DateTime $member_licence_deadline): self
+    public function setMemberLicenceDeadline(?DateTime $member_licence_deadline): self
     {
         $this->member_licence_deadline = $member_licence_deadline;
 
@@ -156,10 +156,10 @@ class MemberLicence
     }
 
     /**
-     * @param DateTime $member_licence_medical_certificate
+     * @param DateTime|null $member_licence_medical_certificate
      * @return $this
      */
-    public function setMemberLicenceMedicalCertificate(DateTime $member_licence_medical_certificate): self
+    public function setMemberLicenceMedicalCertificate(?DateTime $member_licence_medical_certificate): self
     {
         $this->member_licence_medical_certificate = $member_licence_medical_certificate;
 
@@ -175,10 +175,10 @@ class MemberLicence
     }
 
     /**
-     * @param DateTime $member_licence_payment_date
+     * @param DateTime|null $member_licence_payment_date
      * @return $this
      */
-    public function setMemberLicencePaymentDate(DateTime $member_licence_payment_date): self
+    public function setMemberLicencePaymentDate(?DateTime $member_licence_payment_date): self
     {
         $this->member_licence_payment_date = $member_licence_payment_date;
 
@@ -186,18 +186,18 @@ class MemberLicence
     }
 
     /**
-     * @return int
+     * @return int|null
      */
-    public function getMemberLicencePaymentValue(): int
+    public function getMemberLicencePaymentValue(): ?int
     {
         return $this->member_licence_payment_value;
     }
 
     /**
-     * @param int $member_licence_payment_value
+     * @param int|null $member_licence_payment_value
      * @return $this
      */
-    public function setMemberLicencePaymentValue(int $member_licence_payment_value): self
+    public function setMemberLicencePaymentValue(?int $member_licence_payment_value): self
     {
         $this->member_licence_payment_value = $member_licence_payment_value;
 

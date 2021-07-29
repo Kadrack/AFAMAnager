@@ -46,11 +46,11 @@ class Member
     private string $member_name;
 
     /**
-     * @var string
+     * @var string|null
      *
      * @ORM\Column(type="string", length=255)
      */
-    private string $member_photo;
+    private ?string $member_photo;
 
     /**
      * @var int
@@ -280,18 +280,18 @@ class Member
     }
 
     /**
-     * @return string
+     * @return string|null
      */
-    public function getMemberPhoto(): string
+    public function getMemberPhoto(): ?string
     {
         return $this->member_photo;
     }
 
     /**
-     * @param string $member_photo
+     * @param string|null $member_photo
      * @return $this
      */
-    public function setMemberPhoto(string $member_photo): self
+    public function setMemberPhoto(?string $member_photo): self
     {
         $this->member_photo = $member_photo;
 
@@ -333,9 +333,9 @@ class Member
     }
 
     /**
-     * @return string
+     * @return string|null
      */
-    public function getMemberZip(): string
+    public function getMemberZip(): ?string
     {
         return $this->member_zip;
     }

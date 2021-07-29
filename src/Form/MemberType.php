@@ -91,7 +91,7 @@ class MemberType extends AbstractType
         $builder
             ->add('MemberFirstName', TextType::class, array('label' => 'Prénom : '))
             ->add('MemberName', TextType::class, array('label' => 'Nom : '))
-            ->add('MemberPhoto', FileType::class, array('label' => 'Photo : ', 'required'=> false))
+            ->add('MemberPhoto', FileType::class, array('label' => 'Photo : ', 'required'=> false, 'data_class' => null, 'empty_data' => ''))
             ->add('MemberSex', ChoiceType::class, array('label' => 'Sexe : ', 'multiple' => false, 'expanded' => true, 'choices' => $list->getSex(0)))
             ->add('MemberAddress', TextType::class, array('label' => 'Adresse : '))
             ->add('MemberZip', IntegerType::class, array('label' => 'Code postal : '))

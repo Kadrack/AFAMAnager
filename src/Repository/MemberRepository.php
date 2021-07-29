@@ -270,14 +270,19 @@ class MemberRepository extends ServiceEntityRepository
         $qb = $this->createQueryBuilder('m');
 
         $qb->select('m.member_id AS Id', 'm.member_firstname AS FirstName', 'm.member_name AS Name', 'l.member_licence_deadline AS Deadline', 'l.member_licence_payment_date AS Date', 'l.member_licence_payment_value AS Payment', 'c.club_id AS ClubId', 'c.club_name AS ClubName', 'l.member_licence_id AS RenewId', 'l.member_licence_status As Status')
-            ->join(Club::class, 'c', 'WITH', $qb->expr()->eq('m.member_actual_club', 'c.club_id'))
             ->join(MemberLicence::class, 'l', 'WITH', $qb->expr()->eq('m.member_id', 'l.member_licence'))
-            ->where($qb->expr()->gte('l.member_licence_status', 2));
+            ->join(Club::class, 'c', 'WITH', $qb->expr()->eq('l.member_licence_club', 'c.club_id'))
+            ->where($qb->expr()->isNotNull('l.member_licence_payment_value'));
 
-        is_null($club) ?: $qb->andWhere($qb->expr()->eq('l.member_licence_club', $club->getClubId()));
+        if (!is_null($club))
+        {
+            $qb->andWhere($qb->expr()->gte('l.member_licence_status', 2));
+            $qb->andWhere($qb->expr()->eq('l.member_licence_club', $club->getClubId()));
+        }
 
-        return $qb->orderBy('Date', 'ASC')
+        return $qb->orderBy('Date', 'DESC')
             ->addOrderBy('l.member_licence_id', 'DESC')
+            ->setMaxResults(100)
             ->getQuery()
             ->getArrayResult();
     }

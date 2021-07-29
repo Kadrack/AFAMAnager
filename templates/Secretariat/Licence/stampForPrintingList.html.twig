@@ -8,7 +8,7 @@
 {% endblock %}
 
 {% block body %}
-    <h1>Liste des renouvellements payés à compléter</h1>
+    <h1>Liste des timbres à imprimer</h1>
     {% for club in list %}
     <h2>{{ club.Id }} - {{ club.Name|title }} <a class="btn btn-primary" href="{{ path('secretariat-printStamp', {'club': club.Id}) }}" target="_blank">Imprimer timbres</a> <a class="btn btn-primary" href="{{ path('secretariat-stampForPrintingValidate', {'club': club.Id}) }}">Valider Impression</a></h2>
     <table class="table table-sm table-hover unselectable">

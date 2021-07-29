@@ -30,6 +30,7 @@ use App\Form\UserType;
 
 use App\Service\ClubTools;
 use App\Service\ListData;
+use App\Service\MemberTools;
 use App\Service\PhotoUploader;
 use App\Service\UserTools;
 
@@ -777,43 +778,77 @@ class SecretariatController extends AbstractController
      * @param Request $request
      * @param PhotoUploader $photoUploader
      * @param Club $club
+     * @param MemberTools $memberTools
      * @return RedirectResponse|Response
-     * @throws Exception
+     * @throws \Exception
      */
     #[Route('/creer-membre/club/{club<\d+>}', name:'memberCreate')]
-    public function memberCreate(Request $request, PhotoUploader $photoUploader, Club $club): RedirectResponse|Response
+    public function memberCreate(Request $request, PhotoUploader $photoUploader, Club $club, MemberTools $memberTools): RedirectResponse|Response
     {
-        $form = $this->createForm(MemberType::class, new Member());
+        $licence = $this->getDoctrine()->getRepository(MemberLicence::class)->findOneBy(['member_licence_club' => $club, 'member_licence_status' => 3], ['member_licence_payment_value' => 'DESC']);
+
+        if (is_null($licence) || ($licence?->getMemberLicencePaymentValue() == null))
+        {
+            $data = new Member();
+        }
+        else
+        {
+            $data = $licence->getMemberLicence();
+        }
+
+        $form = $this->createForm(MemberType::class, $data);
 
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid())
         {
-            $member = $form->getData();
+            $entityManager = $this->getDoctrine()->getManager();
 
-            $licence = new MemberLicence();
+            if (is_null($licence) || ($licence?->getMemberLicencePaymentValue() == null))
+            {
+                $member = $memberTools->new($club);
 
-            $licence->setMemberLicenceStatus(1);
-            $licence->setMemberLicenceClub($club);
+                $licence = $member->getMemberLastLicence();
+            }
+            else
+            {
+                $member = $licence->getMemberLicence();
+
+                $licence->setMemberLicenceStatus(1);
+
+                $stamp = new MemberPrintout();
+
+                $stamp->setMemberPrintoutLicence($licence);
+                $stamp->setMemberPrintoutCreation(new DateTime('today'));
+
+                $entityManager->persist($stamp);
+            }
+
             $licence->setMemberLicenceUpdate(new DateTime('today'));
             $licence->setMemberLicenceMedicalCertificate($form->get('MemberLicenceMedicalCertificate')->getData());
             $licence->setMemberLicenceDeadline(new DateTime('+1 year '.$licence->getMemberLicenceMedicalCertificate()->format('Y-m-d')));
 
-            $member->addMemberLicences($licence);
-
-            $member->setMemberActualClub($club);
-            $member->setMemberLastLicence($licence);
+            $member->setMemberFirstname($form->get('MemberFirstName')->getData());
+            $member->setMemberName($form->get('MemberName')->getData());
+            $member->setMemberSex($form->get('MemberSex')->getData());
+            $member->setMemberAddress($form->get('MemberAddress')->getData());
+            $member->setMemberZip($form->get('MemberZip')->getData());
+            $member->setMemberCity($form->get('MemberCity')->getData());
+            $member->setMemberCountry($form->get('MemberCountry')->getData());
+            $member->setMemberEmail($form->get('MemberEmail')->getData());
+            $member->setMemberPhone($form->get('MemberPhone')->getData());
+            $member->setMemberBirthday($form->get('MemberBirthday')->getData());
+            $member->setMemberComment($form->get('MemberComment')->getData());
+            $member->setMemberCity($form->get('MemberCity')->getData());
             $member->setMemberStartPractice($form->get('MemberLicenceMedicalCertificate')->getData());
             $member->setMemberPhoto(is_null($form['MemberPhoto']->getData()) ? 'nophoto.png' : $photoUploader->upload($form['MemberPhoto']->getData()));
 
-            $grade = new Grade();
+            $grade = $member->getMemberLastGrade();
 
             $rank = is_null($form->get('GradeRank')->getData()) ? 1 : $form->get('GradeRank')->getData();
 
             $grade->setGradeRank($rank);
-            $grade->setGradeMember($member);
             $grade->setGradeDate($licence->getMemberLicenceUpdate());
-            $grade->setGradeClub($club);
 
             if ($grade->getGradeRank() < 7)
             {
@@ -824,14 +859,8 @@ class SecretariatController extends AbstractController
                 $grade->setGradeStatus(6);
             }
 
-            $member->setMemberLastGrade($grade);
-            $member->addMemberGrades($grade);
-
             $licence->setMemberLicenceGrade($grade);
 
-            $entityManager = $this->getDoctrine()->getManager();
-
-            $entityManager->persist($member);
             $entityManager->flush();
 
             return $this->redirectToRoute('secretariat-membersActive', array('club' => $club->getClubId()));

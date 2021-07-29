@@ -2,6 +2,7 @@
 // src/Service/MemberTools.php
 namespace App\Service;
 
+use App\Entity\Club;
 use App\Entity\Grade;
 use App\Entity\GradeSession;
 use App\Entity\Member;
@@ -433,5 +434,53 @@ class MemberTools
         $this->em->flush();
 
         return true;
+    }
+
+    /**
+     * @param Club $club
+     * @return Member
+     * @throws \Exception
+     */
+    public function new(Club $club): Member
+    {
+        $member = new Member();
+
+        $licence = new MemberLicence();
+
+        $licence->setMemberLicenceStatus(3);
+        $licence->setMemberLicenceClub($club);
+        $licence->setMemberLicenceUpdate(new DateTime('today'));
+
+        $member->addMemberLicences($licence);
+
+        $member->setMemberSex(3);
+        $member->setMemberActualClub($club);
+        $member->setMemberLastLicence($licence);
+        $member->setMemberCountry('BE');
+        $member->setMemberCity('Inconnu');
+        $member->setMemberName('Inconnu');
+        $member->setMemberAddress('Inconnu');
+        $member->setMemberFirstname('Inconnu');
+        $member->setMemberPhoto('nophoto.png');
+        $member->setMemberBirthday(new DateTime('today'));
+        $member->setMemberStartPractice(new DateTime('today'));
+
+        $grade = new Grade();
+
+        $grade->setGradeRank(1);
+        $grade->setGradeMember($member);
+        $grade->setGradeDate($licence->getMemberLicenceUpdate());
+        $grade->setGradeClub($club);
+        $grade->setGradeStatus(4);
+
+        $member->setMemberLastGrade($grade);
+        $member->addMemberGrades($grade);
+
+        $licence->setMemberLicenceGrade($grade);
+
+        $this->em->persist($member);
+        $this->em->flush();
+
+        return $this->em->getRepository(Member::class)->findOneBy([], ['member_id' => 'DESC']);
     }
 }
