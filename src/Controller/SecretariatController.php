@@ -787,7 +787,7 @@ class SecretariatController extends AbstractController
     {
         $licence = $this->getDoctrine()->getRepository(MemberLicence::class)->findOneBy(['member_licence_club' => $club, 'member_licence_status' => 3], ['member_licence_payment_value' => 'DESC']);
 
-        if (is_null($licence) || ($licence?->getMemberLicencePaymentValue() == null))
+        if (is_null($licence) || ($licence->getMemberLicencePaymentValue() == null))
         {
             $data = new Member();
         }
@@ -804,7 +804,7 @@ class SecretariatController extends AbstractController
         {
             $entityManager = $this->getDoctrine()->getManager();
 
-            if (is_null($licence) || ($licence?->getMemberLicencePaymentValue() == null))
+            if (is_null($licence) || ($licence->getMemberLicencePaymentValue() == null))
             {
                 $member = $memberTools->new($club);
 
