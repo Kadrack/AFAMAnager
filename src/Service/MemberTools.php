@@ -58,6 +58,16 @@ class MemberTools
     private ?array $titles;
 
     /**
+     * @var int|null
+     */
+    private ?int $titleAdeps;
+
+    /**
+     * @var int|null
+     */
+    private ?int $titleAikikai;
+
+    /**
      * MemberTools constructor.
      * @param EntityManagerInterface $entityManager
      * @param PhotoUploader $photoUploader
@@ -67,10 +77,12 @@ class MemberTools
         $this->em            = $entityManager;
         $this->photoUploader = $photoUploader;
 
-        $this->grades   = null;
-        $this->licences = null;
-        $this->stages   = null;
-        $this->titles   = null;
+        $this->grades        = null;
+        $this->licences      = null;
+        $this->stages        = null;
+        $this->titles        = null;
+        $this->titleAdeps    = null;
+        $this->titleAikikai  = null;
     }
 
     /**
@@ -315,6 +327,58 @@ class MemberTools
         $this->titles = $this->em->getRepository(Member::class)->getMemberTitles($this->member->getMemberId());
 
         return $this->titles;
+    }
+
+    /**
+     * @return int|null
+     */
+    public function getAdepsTitle(): ?int
+    {
+        if ($this->titleAdeps != null)
+        {
+            return $this->titleAdeps;
+        }
+
+        foreach ($this->getTitles() as $title)
+        {
+            if (($title['Rank'] <= 3) || ($title['Rank'] >= 10))
+            {
+                continue;
+            }
+
+            if ($this->titleAdeps < $title['Rank'])
+            {
+                $this->titleAdeps = $title['Rank'];
+            }
+        }
+
+        return $this->titleAdeps;
+    }
+
+    /**
+     * @return int|null
+     */
+    public function getAikikaiTitle(): ?int
+    {
+        if ($this->titleAikikai != null)
+        {
+            return $this->titleAikikai;
+        }
+
+        foreach ($this->getTitles() as $title)
+        {
+            if ($title['Rank'] > 3)
+            {
+                continue;
+            }
+
+            if ($this->titleAikikai < $title['Rank'])
+            {
+                $this->titleAikikai = $title['Rank'];
+            }
+        }
+
+        return $this->titleAikikai;
     }
 
     /**

@@ -3,6 +3,7 @@
 namespace App\Service;
 
 use Dompdf\Dompdf;
+use Dompdf\Options;
 
 use setasign\Fpdi\PdfParser\PdfParserException;
 use setasign\Fpdi\PdfReader\PdfReaderException;
@@ -23,11 +24,15 @@ class FileGenerator
      * @param string $content
      * @param string|null $owner_password
      * @param string|null $user_password
-     * @return BinaryFileResponse
+     * @return string
      */
-    public function pdfGenerator(string $filename, string $content, ?string $user_password = null, ?string $owner_password = null): BinaryFileResponse
+    public function pdfGenerator(string $filename, string $content, ?string $user_password = null, ?string $owner_password = null): string
     {
-        $dompdf = new DOMPDF();
+        $options = new Options();
+
+        $options->set('isRemoteEnabled', TRUE);
+
+        $dompdf = new Dompdf($options);
 
         $dompdf->setPaper('a4');
 
@@ -40,7 +45,7 @@ class FileGenerator
 
         try
         {
-            $filename = $this->pdfEncrypt($filetemp, $filename, $user_password, $owner_password);
+            $pdf = $this->pdfEncrypt($filetemp, $filename, $user_password, $owner_password);
         }
         catch (PdfParserException | PdfReaderException $e)
         {
@@ -49,10 +54,12 @@ class FileGenerator
 
         unlink($filetemp);
 
-        $response = new BinaryFileResponse($filename);
-        $response->setContentDisposition(ResponseHeaderBag::DISPOSITION_INLINE);
+        //$response = new BinaryFileResponse($filename);
+        //$response->setContentDisposition(ResponseHeaderBag::DISPOSITION_INLINE);
 
-        return $response->deleteFileAfterSend();
+        //return $response->deleteFileAfterSend();
+
+        return $pdf;
     }
 
     /**

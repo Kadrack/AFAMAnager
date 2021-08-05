@@ -29,6 +29,7 @@ use App\Form\TrainingType;
 use App\Form\UserType;
 
 use App\Service\ClubTools;
+use App\Service\FileGenerator;
 use App\Service\ListData;
 use App\Service\MemberTools;
 use App\Service\PhotoUploader;
@@ -48,10 +49,11 @@ use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\ResponseHeaderBag;
-
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
 
 use Symfony\Component\Routing\Annotation\Route;
+
+use ZipArchive;
 
 /**
  * Class SecretariatController
@@ -916,65 +918,22 @@ class SecretariatController extends AbstractController
     }
 
     /**
-     * @param Club $club
      * @param Member $member
+     * @param FileGenerator $fileGenerator
      * @return BinaryFileResponse
      */
-    #[Route('/formulaire-renouvellement/{member<\d+>}/club/{club<\d+>}', name:'memberFormRenew')]
-    public function memberFormRenew(Club $club, Member $member): BinaryFileResponse
+    #[Route('/formulaire-renouvellement/{member<\d+>}', name:'memberFormRenew')]
+    public function memberFormRenew(Member $member, FileGenerator $fileGenerator): BinaryFileResponse
     {
-        $listData = new ListData();
-
-        $output_file = "./licence_out.rtf";
-
-        $fh = fopen($output_file, 'a') or die('can\'t open file');
-
-        $file = file_get_contents('../private/licence.rtf', true);
-
-        $file = substr($file, 1, strlen($file)-2);
-
-        fwrite($fh, '{');
-
-        $old = array('\{\{TITLE\}\}', '\{\{SEX\}\}', '\{\{NAME\}\}', '\{\{FIRSTNAME\}\}', '\{\{DOJO_ID\}\}', '\{\{DOJO\}\}', '\{\{ADDRESS\}\}', '\{\{ZIP\}\}', '\{\{CITY\}\}', '\{\{BIRTHDAY\}\}', '\{\{GSM\}\}', '\{\{MAIL\}\}', '\{\{LICENCE_ID\}\}', '\{\{LICENCE_END\}\}', '\{\{CHILDREN\}\}', '\{\{ADULT\}\}', '\{\{COUNTRY\}\}', '\{\{GRADE\}\}');
-
         $children_limit = new DateTime('-14 year today');
 
-        $newphrase = '';
+        $licenceForm = $this->renderView('Forms/licence_form.html.twig', array('limit' => $children_limit));
 
-        unset($new);
+        $filename = str_replace(' ', '', $member->getMemberId().'-'.$member->getMemberName().'.pdf');
 
-        if ($member->getMemberSex() == 1)
-        {
-            $title='Monsieur';
-            $sex='Masculin';
-        }
-        else
-        {
-            $title='Madamme';
-            $sex="Féminin";
-        }
+        $pdf = $fileGenerator->pdfGenerator('../private/' . $filename, $licenceForm);
 
-        if ($member->getMemberBirthday() > $children_limit)
-        {
-            $children='X';
-            $adult='-';
-        }
-        else
-        {
-            $children='-';
-            $adult='X';
-        }
-
-        $new = array($title, utf8_decode($sex), utf8_decode($member->getMemberName()), utf8_decode($member->getMemberFirstname()), utf8_decode($club->getClubId()), utf8_decode($club->getClubName()), utf8_decode($member->getMemberAddress()), utf8_decode($member->getMemberZip()), utf8_decode($member->getMemberCity()), utf8_decode($member->getMemberBirthday()->format('d/m/Y')), utf8_decode($member->getMemberPhone()), utf8_decode($member->getMemberEmail()), utf8_decode($member->getMemberId()), utf8_decode($member->getMemberLastLicence()->getMemberLicenceDeadline()->format('d/m/Y')), $children, $adult, utf8_decode($listData->getCountryName($member->getMemberCountry())), utf8_decode($listData->getGrade($member->getMemberLastGrade()->getGradeRank())));
-
-        $newphrase .= str_replace($old, $new, $file);
-
-        fwrite($fh, $newphrase);
-
-        fwrite($fh, '}');
-        fclose($fh);
-
-        $response = new BinaryFileResponse($output_file);
+        $response = new BinaryFileResponse($pdf);
         $response->setContentDisposition(ResponseHeaderBag::DISPOSITION_ATTACHMENT);
 
         return $response->deleteFileAfterSend();
@@ -2020,10 +1979,11 @@ class SecretariatController extends AbstractController
     /**
      * @param Request $request
      * @param Club $club
+     * @param FileGenerator $fileGenerator
      * @return BinaryFileResponse|Response
      */
     #[Route('/generer-formulaires-renouvellement/{club<\d+>}', name:'formRenewCreate')]
-    public function formRenewCreate(Request $request, Club $club): BinaryFileResponse|Response
+    public function formRenewCreate(Request $request, Club $club, FileGenerator $fileGenerator, MemberTools $memberTools): BinaryFileResponse|Response
     {
         $period = null;
 
@@ -2033,72 +1993,37 @@ class SecretariatController extends AbstractController
 
         if ($form->isSubmitted() && $form->isValid())
         {
-            $listData = new ListData();
+            $zip = new ZipArchive();
 
-            $output_file = "./licence_out.rtf";
-
-            $fh = fopen($output_file, 'a') or die('can\'t open file');
-
-            $file = file_get_contents('../private/licence.rtf', true);
-
-            $file = substr($file, 1, strlen($file)-2);
-
-            fwrite($fh, '{');
-
-            $old = array('\{\{TITLE\}\}', '\{\{SEX\}\}', '\{\{NAME\}\}', '\{\{FIRSTNAME\}\}', '\{\{DOJO_ID\}\}', '\{\{DOJO\}\}', '\{\{ADDRESS\}\}', '\{\{ZIP\}\}', '\{\{CITY\}\}', '\{\{BIRTHDAY\}\}', '\{\{GSM\}\}', '\{\{MAIL\}\}', '\{\{LICENCE_ID\}\}', '\{\{LICENCE_END\}\}', '\{\{CHILDREN\}\}', '\{\{ADULT\}\}', '\{\{COUNTRY\}\}', '\{\{GRADE\}\}');
-
-            $children_limit = new DateTime('-14 year today');
+            $zip->open('../private/licences.zip', ZipArchive::CREATE);
 
             $members = $this->getDoctrine()->getRepository(Member::class)->getClubRenewForms($club, $form->get('Start')->getData()->format('Y-m-d'), $form->get('End')->getData()->format('Y-m-d'));
 
-            $i = 0;
-
             foreach ($members as $member)
             {
-                if ($i != 0)
-                {
-                    fwrite($fh, '{\page}');
-                }
+                $memberTools->setMember($member);
 
-                $newphrase = '';
+                $member->getMemberBirthday() >= new DateTime('-14 year today') ? $isChild = true : $isChild = false;
 
-                unset($new);
+                $licenceForm = $this->renderView('Forms/licence_form.html.twig', array('club' => $club, 'member' => $member, 'memberTools' => $memberTools, 'isChild' => $isChild));
 
-                if ($member['Sex'] == 1)
-                {
-                    $title='Monsieur';
-                    $sex='Masculin';
-                }
-                else
-                {
-                    $title='Madamme';
-                    $sex="Féminin";
-                }
+                $filename = str_replace(' ', '', $member->getMemberId().'-'.$member->getMemberName().'.pdf');
 
-                if ($member['Birthday'] > $children_limit)
-                {
-                    $children='X';
-                    $adult='-';
-                }
-                else
-                {
-                    $children='-';
-                    $adult='X';
-                }
+                $pdf = $fileGenerator->pdfGenerator('../private/' . $filename, $licenceForm);
 
-                $new = array($title, utf8_decode($sex), utf8_decode($member['Name']), utf8_decode($member['FirstName']), utf8_decode($club->getClubId()), utf8_decode($club->getClubName()), utf8_decode($member['Address']), utf8_decode($member['Zip']), utf8_decode($member['City']), utf8_decode($member['Birthday']->format('d/m/Y')), utf8_decode($member['Phone']), utf8_decode($member['Email']), utf8_decode($member['Id']), utf8_decode($member['Deadline']->format('d/m/Y')), $children, $adult, utf8_decode($listData->getCountryName($member['Country'])), utf8_decode($listData->getGrade($member['Grade'])));
+                $fileList[] = $pdf;
 
-                $newphrase .= str_replace($old, $new, $file);
-
-                fwrite($fh, $newphrase);
-
-                $i++;
+                $zip->addFile($pdf, $filename);
             }
 
-            fwrite($fh, '}');
-            fclose($fh);
+            $zip->close();
 
-            $response = new BinaryFileResponse($output_file);
+            foreach ($fileList as $file)
+            {
+                unlink($file);
+            }
+
+            $response = new BinaryFileResponse('../private/licences.zip');
             $response->setContentDisposition(ResponseHeaderBag::DISPOSITION_ATTACHMENT);
 
             return $response->deleteFileAfterSend();
