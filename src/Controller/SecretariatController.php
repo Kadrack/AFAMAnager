@@ -925,9 +925,9 @@ class SecretariatController extends AbstractController
     #[Route('/formulaire-renouvellement/{member<\d+>}', name:'memberFormRenew')]
     public function memberFormRenew(Member $member, FileGenerator $fileGenerator): BinaryFileResponse
     {
-        $children_limit = new DateTime('-14 year today');
+        $member->getMemberBirthday() >= new DateTime('-14 year today') ? $isChild = true : $isChild = false;
 
-        $licenceForm = $this->renderView('Forms/licence_form.html.twig', array('limit' => $children_limit));
+        $licenceForm = $this->renderView('Forms/licence_form.html.twig', array('club' => $member->getMemberActualClub(), 'member' => $member, 'memberTools' => $memberTools, 'isChild' => $isChild));
 
         $filename = str_replace(' ', '', $member->getMemberId().'-'.$member->getMemberName().'.pdf');
 
