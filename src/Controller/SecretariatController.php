@@ -923,7 +923,7 @@ class SecretariatController extends AbstractController
      * @return BinaryFileResponse
      */
     #[Route('/formulaire-renouvellement/{member<\d+>}', name:'memberFormRenew')]
-    public function memberFormRenew(Member $member, FileGenerator $fileGenerator): BinaryFileResponse
+    public function memberFormRenew(Member $member, FileGenerator $fileGenerator, MemberTools $memberTools): BinaryFileResponse
     {
         $member->getMemberBirthday() >= new DateTime('-14 year today') ? $isChild = true : $isChild = false;
 
