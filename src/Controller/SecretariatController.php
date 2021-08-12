@@ -621,13 +621,14 @@ class SecretariatController extends AbstractController
     #[Route('/liste-membres/{club<\d+>}', name:'membersActive')]
     public function membersActive(SessionInterface $session, Club $club): Response
     {
-        $members = $this->getDoctrine()->getRepository(Member::class)->getClubActiveMembers($club);
+        $members    = $this->getDoctrine()->getRepository(Member::class)->getClubActiveMembers($club);
+        $newMembers = $this->getDoctrine()->getRepository(Member::class)->getClubActiveMembers($club, true);
 
         $limit = new DateTime('+3 month today');
 
         $session->set('origin', 'active');
 
-        return $this->render('Secretariat/Club/Member/list_active.html.twig', array('members' => $members, 'club' => $club, 'limit' => $limit));
+        return $this->render('Secretariat/Club/Member/list_active.html.twig', array('members' => $members, 'newMembers' => $newMembers, 'club' => $club, 'limit' => $limit));
     }
 
     /**

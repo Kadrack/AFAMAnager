@@ -60,7 +60,7 @@ class MemberRepository extends ServiceEntityRepository
      * @param Club $club
      * @return array|null
      */
-    public function getClubActiveMembers(Club $club): ?array
+    public function getClubActiveMembers(Club $club, bool $new = false): ?array
     {
         $today = new DateTime('today');
 
@@ -72,7 +72,7 @@ class MemberRepository extends ServiceEntityRepository
             ->leftJoin(User::class, 'u', 'WITH', $qb->expr()->eq('m.member_id', 'u.user_member'))
             ->where($qb->expr()->eq('l.member_licence_club', $club->getClubId()))
             ->andWhere($qb->expr()->gt('l.member_licence_deadline', "'".$today->format('Y-m-d')."'"))
-            ->andWhere($qb->expr()->eq('l.member_licence_status', 1))
+            ->andWhere($qb->expr()->eq('l.member_licence_status', $new ? 3 : 1))
             ->orderBy('FirstName', 'ASC')
             ->addOrderBy('Name', 'ASC')
             ->getQuery()
