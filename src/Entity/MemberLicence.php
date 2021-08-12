@@ -129,9 +129,9 @@ class MemberLicence
     }
 
     /**
-     * @return DateTime
+     * @return DateTime|null
      */
-    public function getMemberLicenceDeadline(): DateTime
+    public function getMemberLicenceDeadline(): ?DateTime
     {
         return $this->member_licence_deadline;
     }
