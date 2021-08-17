@@ -476,7 +476,7 @@ class ClubController extends AbstractController
 
         if ($form->isSubmitted() && $form->isValid())
         {
-            $userTools->newUser($form->getData(), $this->getUser(), $form['Password']->getData(), $member);
+            $userTools->newUser($form->getData(), $this->getUser(), $form['Password']->getData(), $member->getMemberId());
 
             $session->set('duplicate', $userTools->isDuplicate());
 
