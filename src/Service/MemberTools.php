@@ -480,7 +480,7 @@ class MemberTools
     {
         if ($photo != null)
         {
-            $memberModification->setMemberModificationPhoto($this->photoUploader->upload($photo, $memberModification->getMemberModificationPhoto() !== null ? $memberModification->getMemberModificationPhoto() : ""));
+            $memberModification->setMemberModificationPhoto($this->photoUploader->upload($photo, $memberModification?->getMemberModificationPhoto() !== null ? $memberModification->getMemberModificationPhoto() : ""));
         }
 
         if ($this->member->getMemberModification() == null)
