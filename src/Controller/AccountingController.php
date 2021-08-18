@@ -74,7 +74,7 @@ class AccountingController extends AbstractController
 
         $form->handleRequest($request);
 
-        if ($form->isSubmitted() && $form->isValid() && is_null($this->getDoctrine()->getRepository(MemberLicence::class)->findOneBy(['member_licence' => $form->get('LicenceNumber')->getData(), 'member_licence_status' => array(2, 3)])))
+        if ($form->isSubmitted() && $form->isValid())
         {
             $members = $this->getDoctrine()->getRepository(Member::class)->findBy(['member_id' => explode(',', $form->get('LicenceNumber')->getData())]);
 
