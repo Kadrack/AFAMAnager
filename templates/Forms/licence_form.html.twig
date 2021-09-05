@@ -66,6 +66,7 @@
     <div>
         <p style="font-size: 14px; font-weight: bold; text-decoration: underline; margin-top: 0; margin-bottom: 0">Informations relatives à la cotisation fédérale et à son coût</p>
         <p style="margin: 4px;">Date d’échéance du dernier renouvellement de la licence : {{ member.getMemberLastLicence.getMemberLicenceDeadline|date("d/m/Y") }}</p>
+        <p style="margin: 4px;">Interruption de la pratique du ..../..../........ au ..../..../........</p>
         <p style="margin: 0">
             <label><input type="checkbox" {% if isChild %}checked{% endif %} />Le-a pratiquant-e a moins de 14 ans et paie la somme de 30,00 € au club.</label><br />
             <label><input type="checkbox" {% if not isChild %}checked{% endif %} />Le-a pratiquant-e a plus de 14 ans et paie la somme de 35,00 € au club.</label><br />
