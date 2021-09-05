@@ -476,7 +476,7 @@ class ClubController extends AbstractController
 
         if ($form->isSubmitted() && $form->isValid())
         {
-            $userTools->newUser($form->getData(), $this->getUser(), $form['Password']->getData(), $member);
+            $userTools->newUser($form->getData(), $this->getUser(), $form['Password']->getData(), $member->getMemberId());
 
             $session->set('duplicate', $userTools->isDuplicate());
 
@@ -751,5 +751,34 @@ class ClubController extends AbstractController
         }
 
         return $this->render('Club/Member/search.html.twig', array('form' => $form->createView(), 'results' => $results, 'clubTools' => $this->clubTools, 'nextManagedClub' => sizeof($managedClubs) == 1 ? 0 : $session->get('actual_club')+1));
+    }
+
+    /**
+     * @param \Symfony\Component\HttpFoundation\Request $request
+     * @param UserTools $userTools
+     * @return Response
+     */
+    #[Route('/liste-des-paiments-licence', name:'paidLicenceList')]
+    public function paidLicenceList(Request $request, SessionInterface $session, UserTools $userTools): Response
+    {
+        $managedClubs = $userTools->listManagedClub($this->getUser());
+
+        if ($request->query->has('change_actual'))
+        {
+            if (isset($managedClubs[$request->query->getInt('change_actual')]))
+            {
+                $session->set('actual_club', $request->query->get('change_actual'));
+            }
+            else
+            {
+                $session->set('actual_club', 0);
+            }
+        }
+
+        $this->clubTools->setClub($this->getDoctrine()->getRepository(Club::class)->findOneBy(['club_id' => $managedClubs[$session->get('actual_club')]]));
+
+        $list = $this->getDoctrine()->getRepository(Member::class)->getAwaitingFormValidationMemberList($this->clubTools->getClub());
+
+        return $this->render('Club/Licence/list.html.twig', array('list' => $list, 'club' => $this->clubTools->getClub(), 'nextManagedClub' => sizeof($managedClubs) == 1 ? 0 : $session->get('actual_club')+1));
     }
 }

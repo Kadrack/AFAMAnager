@@ -60,7 +60,7 @@ class MemberRepository extends ServiceEntityRepository
      * @param Club $club
      * @return array|null
      */
-    public function getClubActiveMembers(Club $club): ?array
+    public function getClubActiveMembers(Club $club, bool $new = false): ?array
     {
         $today = new DateTime('today');
 
@@ -72,7 +72,7 @@ class MemberRepository extends ServiceEntityRepository
             ->leftJoin(User::class, 'u', 'WITH', $qb->expr()->eq('m.member_id', 'u.user_member'))
             ->where($qb->expr()->eq('l.member_licence_club', $club->getClubId()))
             ->andWhere($qb->expr()->gt('l.member_licence_deadline', "'".$today->format('Y-m-d')."'"))
-            ->andWhere($qb->expr()->eq('l.member_licence_status', 1))
+            ->andWhere($qb->expr()->eq('l.member_licence_status', $new ? 3 : 1))
             ->orderBy('FirstName', 'ASC')
             ->addOrderBy('Name', 'ASC')
             ->getQuery()
@@ -109,7 +109,9 @@ class MemberRepository extends ServiceEntityRepository
     {
         $today = new DateTime('today');
 
-        $limit = new DateTime('-3 month today');
+        //todo Change duration to 3 months after complete covid measure
+
+        $limit = new DateTime('-24 month today');
 
         $qb = $this->createQueryBuilder('m');
 
@@ -150,19 +152,16 @@ class MemberRepository extends ServiceEntityRepository
     {
         $qb = $this->createQueryBuilder('m');
 
-        return $qb->select('m.member_id AS Id', 'm.member_firstname AS FirstName', 'm.member_name AS Name', 'm.member_sex AS Sex', 'm.member_address AS Address', 'm.member_zip AS Zip', 'm.member_city AS City', 'm.member_country AS Country', 'm.member_phone AS Phone', 'm.member_birthday AS Birthday', 'm.member_email AS Email',  'g.grade_rank AS Grade', 'l.member_licence_deadline AS Deadline')//, 'max(t.grade_title_rank) AS Title')
-            ->join(MemberLicence::class, 'l', 'WITH', $qb->expr()->eq('m.member_id', 'l.member_licence'))
+        return $qb->join(MemberLicence::class, 'l', 'WITH', $qb->expr()->eq('m.member_id', 'l.member_licence'))
             ->join(Grade::class, 'g', 'WITH', $qb->expr()->eq('m.member_last_grade', 'g.grade_id'))
-            //->leftJoin(GradeTitle::class, 't', 'WITH', $qb->expr()->eq('m.member_id', 't.grade_title_member'))
             ->where($qb->expr()->eq('l.member_licence_club', $club->getClubId()))
             ->andWhere($qb->expr()->gte('l.member_licence_deadline', "'".$start."'"))
             ->andWhere($qb->expr()->lte('l.member_licence_deadline', "'".$end."'"))
             ->andWhere($qb->expr()->eq('l.member_licence_status', 1))
-            //->andWhere($qb->expr()->gt('t.grade_title_rank', 3))
-            ->orderBy('FirstName', 'ASC')
-            ->addOrderBy('Name', 'ASC')
+            ->orderBy('m.member_firstname', 'ASC')
+            ->addOrderBy('m.member_name', 'ASC')
             ->getQuery()
-            ->getArrayResult();
+            ->getResult();
     }
 
     /**
@@ -255,6 +254,32 @@ class MemberRepository extends ServiceEntityRepository
             ->andWhere($qb->expr()->neq('m.member_actual_club', 9999))
             ->andWhere($qb->expr()->eq('l.member_licence_status', 1))
             ->orderBy('l.member_licence_deadline', 'ASC')
+            ->getQuery()
+            ->getArrayResult();
+    }
+
+    /**
+     * @param Club|null $club
+     * @return array|null
+     */
+    public function getAwaitingFormValidationMemberList(?Club $club=null): ?array
+    {
+        $qb = $this->createQueryBuilder('m');
+
+        $qb->select('m.member_id AS Id', 'm.member_firstname AS FirstName', 'm.member_name AS Name', 'l.member_licence_deadline AS Deadline', 'l.member_licence_payment_date AS Date', 'l.member_licence_payment_value AS Payment', 'c.club_id AS ClubId', 'c.club_name AS ClubName', 'l.member_licence_id AS RenewId', 'l.member_licence_status As Status')
+            ->join(MemberLicence::class, 'l', 'WITH', $qb->expr()->eq('m.member_id', 'l.member_licence'))
+            ->join(Club::class, 'c', 'WITH', $qb->expr()->eq('l.member_licence_club', 'c.club_id'))
+            ->where($qb->expr()->isNotNull('l.member_licence_payment_value'));
+
+        if (!is_null($club))
+        {
+            $qb->andWhere($qb->expr()->gte('l.member_licence_status', 2));
+            $qb->andWhere($qb->expr()->eq('l.member_licence_club', $club->getClubId()));
+        }
+
+        return $qb->orderBy('Date', 'DESC')
+            ->addOrderBy('l.member_licence_id', 'DESC')
+            ->setMaxResults(100)
             ->getQuery()
             ->getArrayResult();
     }

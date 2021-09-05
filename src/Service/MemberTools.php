@@ -2,6 +2,7 @@
 // src/Service/MemberTools.php
 namespace App\Service;
 
+use App\Entity\Club;
 use App\Entity\Grade;
 use App\Entity\GradeSession;
 use App\Entity\Member;
@@ -57,6 +58,16 @@ class MemberTools
     private ?array $titles;
 
     /**
+     * @var int|null
+     */
+    private ?int $titleAdeps;
+
+    /**
+     * @var int|null
+     */
+    private ?int $titleAikikai;
+
+    /**
      * MemberTools constructor.
      * @param EntityManagerInterface $entityManager
      * @param PhotoUploader $photoUploader
@@ -66,10 +77,12 @@ class MemberTools
         $this->em            = $entityManager;
         $this->photoUploader = $photoUploader;
 
-        $this->grades   = null;
-        $this->licences = null;
-        $this->stages   = null;
-        $this->titles   = null;
+        $this->grades        = null;
+        $this->licences      = null;
+        $this->stages        = null;
+        $this->titles        = null;
+        $this->titleAdeps    = null;
+        $this->titleAikikai  = null;
     }
 
     /**
@@ -317,6 +330,58 @@ class MemberTools
     }
 
     /**
+     * @return int|null
+     */
+    public function getAdepsTitle(): ?int
+    {
+        if ($this->titleAdeps != null)
+        {
+            return $this->titleAdeps;
+        }
+
+        foreach ($this->getTitles() as $title)
+        {
+            if (($title['Rank'] <= 3) || ($title['Rank'] >= 10))
+            {
+                continue;
+            }
+
+            if ($this->titleAdeps < $title['Rank'])
+            {
+                $this->titleAdeps = $title['Rank'];
+            }
+        }
+
+        return $this->titleAdeps;
+    }
+
+    /**
+     * @return int|null
+     */
+    public function getAikikaiTitle(): ?int
+    {
+        if ($this->titleAikikai != null)
+        {
+            return $this->titleAikikai;
+        }
+
+        foreach ($this->getTitles() as $title)
+        {
+            if ($title['Rank'] > 3)
+            {
+                continue;
+            }
+
+            if ($this->titleAikikai < $title['Rank'])
+            {
+                $this->titleAikikai = $title['Rank'];
+            }
+        }
+
+        return $this->titleAikikai;
+    }
+
+    /**
      * @param Grade $grade
      * @return bool
      */
@@ -415,7 +480,7 @@ class MemberTools
     {
         if ($photo != null)
         {
-            $memberModification->setMemberModificationPhoto($this->photoUploader->upload($photo, $memberModification->getMemberModificationPhoto() !== null ? $memberModification->getMemberModificationPhoto() : ""));
+            $memberModification->setMemberModificationPhoto($this->photoUploader->upload($photo, $memberModification?->getMemberModificationPhoto() !== null ? $memberModification->getMemberModificationPhoto() : ""));
         }
 
         if ($this->member->getMemberModification() == null)
@@ -433,5 +498,53 @@ class MemberTools
         $this->em->flush();
 
         return true;
+    }
+
+    /**
+     * @param Club $club
+     * @return Member
+     * @throws \Exception
+     */
+    public function new(Club $club): Member
+    {
+        $member = new Member();
+
+        $licence = new MemberLicence();
+
+        $licence->setMemberLicenceStatus(3);
+        $licence->setMemberLicenceClub($club);
+        $licence->setMemberLicenceUpdate(new DateTime('today'));
+
+        $member->addMemberLicences($licence);
+
+        $member->setMemberSex(3);
+        $member->setMemberActualClub($club);
+        $member->setMemberLastLicence($licence);
+        $member->setMemberCountry('BE');
+        $member->setMemberCity('Inconnu');
+        $member->setMemberName('Inconnu');
+        $member->setMemberAddress('Inconnu');
+        $member->setMemberFirstname('Inconnu');
+        $member->setMemberPhoto('nophoto.png');
+        $member->setMemberBirthday(new DateTime('today'));
+        $member->setMemberStartPractice(new DateTime('today'));
+
+        $grade = new Grade();
+
+        $grade->setGradeRank(1);
+        $grade->setGradeMember($member);
+        $grade->setGradeDate($licence->getMemberLicenceUpdate());
+        $grade->setGradeClub($club);
+        $grade->setGradeStatus(4);
+
+        $member->setMemberLastGrade($grade);
+        $member->addMemberGrades($grade);
+
+        $licence->setMemberLicenceGrade($grade);
+
+        $this->em->persist($member);
+        $this->em->flush();
+
+        return $this->em->getRepository(Member::class)->findOneBy([], ['member_id' => 'DESC']);
     }
 }

@@ -36,13 +36,6 @@ class Commission
     private string $commission_name;
 
     /**
-     * @var string|null
-     *
-     * @ORM\Column(type="string", length=255, nullable=true)
-     */
-    private ?string $commission_role;
-
-    /**
      * @var ArrayCollection|Collection|null
      *
      * @ORM\OneToMany(targetEntity="App\Entity\CommissionMember", mappedBy="commission", orphanRemoval=true, cascade={"persist"})
@@ -91,25 +84,6 @@ class Commission
     public function setCommissionName(string $commission_name): self
     {
         $this->commission_name = $commission_name;
-
-        return $this;
-    }
-
-    /**
-     * @return string|null
-     */
-    public function getCommissionRole(): ?string
-    {
-        return $this->commission_role;
-    }
-
-    /**
-     * @param string|null $commission_role
-     * @return $this
-     */
-    public function setCommissionRole(?string $commission_role): self
-    {
-        $this->commission_role = $commission_role;
 
         return $this;
     }

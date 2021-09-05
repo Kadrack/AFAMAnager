@@ -2,9 +2,16 @@
 // src/Controller/CommonController.php
 namespace App\Controller;
 
+use App\Entity\Club;
 use App\Entity\Member;
+use App\Entity\MemberLicence;
+use App\Entity\MemberPrintout;
 
 use App\Form\AccountingType;
+
+use App\Service\MemberTools;
+
+use DateTime;
 
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\IsGranted;
 
@@ -42,7 +49,7 @@ class AccountingController extends AbstractController
             return $this->render('Accounting/Member/search.html.twig', array('form' => $form->createView(), 'results' => $results));
         }
 
-        return $this->render('Accounting/Member/search.html.twig', array('form' => $form->createView(), 'results' => isset($results) ? $results : null));
+        return $this->render('Accounting/Member/search.html.twig', array('form' => $form->createView(), 'results' => $results ?? null));
     }
 
     /**
@@ -53,5 +60,146 @@ class AccountingController extends AbstractController
     public function memberContactData(Member $member): Response
     {
         return $this->render('Accounting/Member/contact_data.html.twig', array('member' => $member));
+    }
+
+    /**
+     * @param \Symfony\Component\HttpFoundation\Request $request
+     * @return Response
+     * @throws \Exception
+     */
+    #[Route('/validation-paiement-licence', name:'paymentLicenceValidation')]
+    public function paymentLicenceValidation(Request $request, MemberTools $memberTools): Response
+    {
+        $form = $this->createForm(AccountingType::class, new MemberLicence(), array('form' => 'paymentLicenceValidation', 'data_class' => MemberLicence::class));
+
+        $form->handleRequest($request);
+
+        if ($form->isSubmitted() && $form->isValid())
+        {
+            $members = $this->getDoctrine()->getRepository(Member::class)->findBy(['member_id' => explode(',', $form->get('LicenceNumber')->getData())]);
+
+            $club = $this->getDoctrine()->getRepository(Club::class)->findOneBy(['club_id' => $form->get('Club')->getData()]);
+
+            $isNew = false;
+
+            $entityManager = $this->getDoctrine()->getManager();
+
+            foreach ($members as $member)
+            {
+                $memberLicence = $this->getDoctrine()->getRepository(MemberLicence::class)->findOneBy(['member_licence' => $member->getMemberId(), 'member_licence_status' => 2]);
+
+                if (is_null($memberLicence))
+                {
+                    $isNew = true;
+
+                    $memberLicence = new MemberLicence();
+
+                    $memberLicence->setMemberLicence($member);
+                    $memberLicence->setMemberLicenceClub($club);
+                    $memberLicence->setMemberLicenceDeadline(new DateTime('+1 year ' . $member->getMemberLastLicence()->getMemberLicenceDeadline()->format('Y-m-d')));
+                }
+                else
+                {
+                    $memberLicence->setMemberLicenceStatus(1);
+
+                    $oldLicence = $member->getMemberLastLicence();
+
+                    $oldLicence->setMemberLicenceStatus(0);
+
+                    $member->setMemberLastLicence($memberLicence);
+                    $member->setMemberActualClub($memberLicence->getMemberLicenceClub());
+
+                    $stamp = new MemberPrintout();
+
+                    $stamp->setMemberPrintoutLicence($memberLicence);
+                    $stamp->setMemberPrintoutCreation(new DateTime(('today')));
+
+                    $entityManager->persist($stamp);
+                }
+
+                $memberLicence->setMemberLicenceUpdate(new DateTime('today'));
+                $memberLicence->setMemberLicenceStatus($isNew ? 2 : 1);
+                $memberLicence->setMemberLicencePaymentDate($form->get('MemberLicencePaymentDate')->getData());
+                $memberLicence->setMemberLicencePaymentValue($form->get('MemberLicencePaymentValue')->getData());
+
+                !$isNew ?: $entityManager->persist($memberLicence);
+            }
+
+            for ($i = 0; $i < $form->get('NewMember')->getData(); $i++)
+            {
+                $memberLicence = $this->getDoctrine()->getRepository(MemberLicence::class)->findOneBy(['member_licence_payment_value' => null, 'member_licence_club' => $club, 'member_licence_status' => 3]);
+
+                if (is_null($memberLicence))
+                {
+                    $member = $memberTools->new($club);
+
+                    $memberLicence = $member->getMemberLastLicence();
+                }
+                else
+                {
+                    $memberLicence->setMemberLicenceStatus(1);
+
+                    $stamp = new MemberPrintout();
+
+                    $stamp->setMemberPrintoutLicence($memberLicence);
+                    $stamp->setMemberPrintoutCreation(new DateTime(('today')));
+
+                    $entityManager->persist($stamp);
+                }
+
+                $memberLicence->setMemberLicenceUpdate(new DateTime('today'));
+                $memberLicence->setMemberLicencePaymentDate($form->get('MemberLicencePaymentDate')->getData());
+                $memberLicence->setMemberLicencePaymentValue($form->get('MemberLicencePaymentValue')->getData());
+            }
+
+            $entityManager->flush();
+        }
+
+        $list = $this->getDoctrine()->getRepository(Member::class)->getAwaitingFormValidationMemberList();
+
+        return $this->render('Accounting/Licence/licencePayment.html.twig', array('form' => $form->createView(), 'list' => $list));
+    }
+
+    /**
+     * @param Request $request
+     * @param MemberLicence $memberLicence
+     * @return Response
+     * @throws \Exception
+     */
+    #[Route('/validation-paiement-licence/{memberLicence<\d+>}', name:'paymentLicenceValidationUpdate')]
+    public function paymentLicenceValidationUpdate(Request $request, MemberLicence $memberLicence): Response
+    {
+        if ($memberLicence->getMemberLicenceStatus() < 2)
+        {
+            return $this->redirectToRoute('accounting-paymentLicenceValidation');
+        }
+
+        $form = $this->createForm(AccountingType::class, $memberLicence, array('form' => 'paymentLicenceValidationUpdate', 'data_class' => MemberLicence::class));
+
+        $form->get('Club')->setData($memberLicence->getMemberLicenceClub()->getClubId());
+        $form->get('LicenceNumber')->setData($memberLicence->getMemberLicence()->getMemberId());
+
+        $form->handleRequest($request);
+
+        if ($form->isSubmitted() && $form->isValid())
+        {
+            $member = $this->getDoctrine()->getRepository(Member::class)->findOneBy(['member_id' => $form->get('LicenceNumber')->getData()]);
+
+            $memberLicence->setMemberLicence($member);
+            $memberLicence->setMemberLicenceStatus(2);
+            $memberLicence->setMemberLicenceUpdate(new DateTime('today'));
+            $memberLicence->setMemberLicenceClub($form->get('Club')->getData());
+            $memberLicence->setMemberLicencePaymentDate($form->get('MemberLicencePaymentDate')->getData());
+            $memberLicence->setMemberLicencePaymentValue($form->get('MemberLicencePaymentValue')->getData());
+            $memberLicence->setMemberLicenceDeadline(new DateTime('+1 year ' . $member->getMemberLastLicence()->getMemberLicenceDeadline()->format('Y-m-d')));
+
+            $entityManager = $this->getDoctrine()->getManager();
+
+            $entityManager->flush();
+
+            return $this->redirectToRoute('accounting-paymentLicenceValidation');
+        }
+
+        return $this->render('Accounting/Licence/licencePaymentUpdate.html.twig', array('form' => $form->createView()));
     }
 }

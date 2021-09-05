@@ -67,6 +67,7 @@
                                 <div class="dropdown-menu">
                                     <a class="dropdown-item" href="{{ path('club-dojoIndex') }}">Dojo(s), horaires & professeurs</a>
                                     <a class="dropdown-item" href="{{ path('club-membersList') }}">Liste des membres</a>
+                                    <a class="dropdown-item" href="{{ path('club-paidLicenceList') }}">Liste des paiements reçu</a>
                                     <a class="dropdown-item" href="{{ path('club-associationDetails') }}">Détails Association</a>
                                     <a class="dropdown-item" href="{{ path('club-managerIndex') }}">Liste des gestionnaires</a>
                                     <a class="dropdown-item" href="{{ path('club-searchMembers') }}" target="_blank">Recherche membres</a>
@@ -78,6 +79,7 @@
                                 <a class="nav-link dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">Comptabilité</a>
                                 <div class="dropdown-menu">
                                     <a class="dropdown-item" href="{{ path('accounting-searchMembers') }}" target="_blank">Recherche membres</a>
+                                    <a class="dropdown-item" href="{{ path('accounting-paymentLicenceValidation') }}">Paiement Licence</a>
                                 </div>
                             </li>
                         {% endif %}
@@ -120,7 +122,8 @@
                                     <a class="dropdown-item" href="{{ path('secretariat-supporterIndex') }}">Sympathisants</a>
                                     <a class="dropdown-item" href="{{ path('secretariat-searchMembers') }}" target="_blank">Recherche membres</a>
                                     <a class="dropdown-item" href="{{ path('secretariat-clubList') }}">Les Clubs</a>
-                                    <a class="dropdown-item" href="{{ path('secretariat-clubMailsList') }}">Mailing list</a>
+                                    <a class="dropdown-item" href="{{ path('secretariat-stampForPrinting') }}">Liste timbre à imprimer</a>
+                                    <a class="dropdown-item" href="{{ path('secretariat-export') }}">Export</a>
                                     <a class="dropdown-item" href="{{ path('secretariat-clubAddressList') }}">Liste Adresses des Clubs</a>
                                     <a class="dropdown-item" href="{{ path('secretariat-accessListIndex') }}">Liste accès interface</a>
                                     <a class="dropdown-item" href="{{ path('secretariat-examIndex') }}">Examens Fédéraux</a>
@@ -128,9 +131,16 @@
                                     <a class="dropdown-item" href="{{ path('secretariat-memberModificationValidationIndex') }}">Modifications en attente</a>
                                     <a class="dropdown-item" href="{{ path('secretariat-dojoModificationList') }}">Modifications dojo</a>
                                     <a class="dropdown-item" href="{{ path('secretariat-commissionIndex') }}">Commissions</a>
-                                    <a class="dropdown-item" href="{{ path('secretariat-printStamp') }}" target="_blank">Impression timbres</a>
                                     <a class="dropdown-item" href="{{ path('secretariat-printCard') }}" target="_blank">Impression carte</a>
                                     <a class="dropdown-item" href="{{ path('secretariat-memberListCleanup') }}">Nettoyage ancien membres</a>
+                                </div>
+                            </li>
+                        {% endif %}
+                        {% if is_granted('ROLE_USER') %}
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">Email</a>
+                                <div class="dropdown-menu">
+                                    <a class="dropdown-item" href="{{ path('common-createMail') }}">Envoyer email</a>
                                 </div>
                             </li>
                         {% endif %}
@@ -157,7 +167,6 @@
         <footer class="container">
             <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js" integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj" crossorigin="anonymous"></script>
             <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-ho+j7jyWK8fNQe+A12Hb8AhRq26LrZ/JpcUGGOn+Y7RsweNrtN/tE3MoK7ZeZDyx" crossorigin="anonymous"></script>
-
             {% block javascripts %}{% endblock %}
         </footer>
     </body>

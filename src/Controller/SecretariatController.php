@@ -29,7 +29,9 @@ use App\Form\TrainingType;
 use App\Form\UserType;
 
 use App\Service\ClubTools;
+use App\Service\FileGenerator;
 use App\Service\ListData;
+use App\Service\MemberTools;
 use App\Service\PhotoUploader;
 use App\Service\UserTools;
 
@@ -42,14 +44,16 @@ use Sensio\Bundle\FrameworkExtraBundle\Configuration\IsGranted;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\File\Stream;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\ResponseHeaderBag;
-
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
 
 use Symfony\Component\Routing\Annotation\Route;
+
+use ZipArchive;
 
 /**
  * Class SecretariatController
@@ -215,35 +219,42 @@ class SecretariatController extends AbstractController
      * @param int|null $list
      * @return Response
      */
-    #[Route('/liste-mails-clubs/{list<\d+>}', name:'clubMailsList', defaults: ['list' => null])]
-    public function clubMailsList(?int $list): Response
+    #[Route('/export/{list<\d+>}', name:'export', defaults: ['list' => null])]
+    public function export(?int $list): Response
     {
         if (is_null($list))
         {
-            return $this->render('Secretariat/Club/mails_list.html.twig');
+            return $this->render('Secretariat/export.html.twig');
         }
 
-        if ($list == 3)
+        if ($list == 4)
         {
-            $mailing_list = array_merge($this->getDoctrine()->getRepository(Club::class)->getClubsMailsList(1), $this->getDoctrine()->getRepository(Club::class)->getClubsMailsList(2));
-
+            $export = $this->getDoctrine()->getRepository(Club::class)->getClubsListIAF();
+        }
+        else if ($list == 3)
+        {
+            $export = array_merge($this->getDoctrine()->getRepository(Club::class)->getClubsMailsList(1), $this->getDoctrine()->getRepository(Club::class)->getClubsMailsList(2));
         }
         else
         {
-            $mailing_list = $this->getDoctrine()->getRepository(Club::class)->getClubsMailsList($list);
+            $export = $this->getDoctrine()->getRepository(Club::class)->getClubsMailsList($list);
         }
 
-        $list = array();
+        $file = fopen('export.csv', 'w');
 
-        foreach ($mailing_list as $mail)
+        fwrite($file, chr(0xEF) . chr(0xBB) . chr(0xBF));
+
+        foreach ($export as $entry)
         {
-            $list[] = $mail['Mail'];
+            fputcsv($file, $entry, "\t");
         }
 
-        file_put_contents('./mails.csv', implode(';', array_unique($list)));
+        fclose($file);
 
-        $response = new BinaryFileResponse('./mails.csv');
-        $response->setContentDisposition(ResponseHeaderBag::DISPOSITION_ATTACHMENT);
+        $stream = new Stream('export.csv');
+
+        $response = new BinaryFileResponse($stream);
+        $response->setContentDisposition(ResponseHeaderBag::DISPOSITION_ATTACHMENT, 'export.csv');
 
         return $response->deleteFileAfterSend();
     }
@@ -610,13 +621,14 @@ class SecretariatController extends AbstractController
     #[Route('/liste-membres/{club<\d+>}', name:'membersActive')]
     public function membersActive(SessionInterface $session, Club $club): Response
     {
-        $members = $this->getDoctrine()->getRepository(Member::class)->getClubActiveMembers($club);
+        $members    = $this->getDoctrine()->getRepository(Member::class)->getClubActiveMembers($club);
+        $newMembers = $this->getDoctrine()->getRepository(Member::class)->getClubActiveMembers($club, true);
 
         $limit = new DateTime('+3 month today');
 
         $session->set('origin', 'active');
 
-        return $this->render('Secretariat/Club/Member/list_active.html.twig', array('members' => $members, 'club' => $club, 'limit' => $limit));
+        return $this->render('Secretariat/Club/Member/list_active.html.twig', array('members' => $members, 'newMembers' => $newMembers, 'club' => $club, 'limit' => $limit));
     }
 
     /**
@@ -643,17 +655,20 @@ class SecretariatController extends AbstractController
     }
 
     /**
+     * @param SessionInterface $session
      * @param Club $club
      * @return Response
      */
     #[Route('/liste-anciens-membres/{club<\d+>}', name:'membersAncient')]
-    public function membersAncient(Club $club): Response
+    public function membersAncient(SessionInterface $session, Club $club): Response
     {
         $members = $this->getDoctrine()->getRepository(Member::class)->getClubInactiveMembers($club);
 
         $limit = new DateTime('+3 month today');
 
-        return $this->render('Secretariat/Club/Member/list_ancient.html.twig', array('members' => $members == null ? null : $members, 'club' => $club, 'limit' => $limit));
+        $session->set('origin', 'inactive');
+
+        return $this->render('Secretariat/Club/Member/list_ancient.html.twig', array('members' => $members ?? null, 'club' => $club, 'limit' => $limit));
     }
 
     /**
@@ -766,43 +781,77 @@ class SecretariatController extends AbstractController
      * @param Request $request
      * @param PhotoUploader $photoUploader
      * @param Club $club
+     * @param MemberTools $memberTools
      * @return RedirectResponse|Response
-     * @throws Exception
+     * @throws \Exception
      */
     #[Route('/creer-membre/club/{club<\d+>}', name:'memberCreate')]
-    public function memberCreate(Request $request, PhotoUploader $photoUploader, Club $club): RedirectResponse|Response
+    public function memberCreate(Request $request, PhotoUploader $photoUploader, Club $club, MemberTools $memberTools): RedirectResponse|Response
     {
-        $form = $this->createForm(MemberType::class, new Member());
+        $licence = $this->getDoctrine()->getRepository(MemberLicence::class)->findOneBy(['member_licence_club' => $club, 'member_licence_status' => 3], ['member_licence_payment_value' => 'DESC']);
+
+        if (is_null($licence) || ($licence->getMemberLicencePaymentValue() == null))
+        {
+            $data = new Member();
+        }
+        else
+        {
+            $data = $licence->getMemberLicence();
+        }
+
+        $form = $this->createForm(MemberType::class, $data);
 
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid())
         {
-            $member = $form->getData();
+            $entityManager = $this->getDoctrine()->getManager();
 
-            $licence = new MemberLicence();
+            if (is_null($licence) || ($licence->getMemberLicencePaymentValue() == null))
+            {
+                $member = $memberTools->new($club);
 
-            $licence->setMemberLicenceStatus(1);
-            $licence->setMemberLicenceClub($club);
+                $licence = $member->getMemberLastLicence();
+            }
+            else
+            {
+                $member = $licence->getMemberLicence();
+
+                $licence->setMemberLicenceStatus(1);
+
+                $stamp = new MemberPrintout();
+
+                $stamp->setMemberPrintoutLicence($licence);
+                $stamp->setMemberPrintoutCreation(new DateTime('today'));
+
+                $entityManager->persist($stamp);
+            }
+
             $licence->setMemberLicenceUpdate(new DateTime('today'));
             $licence->setMemberLicenceMedicalCertificate($form->get('MemberLicenceMedicalCertificate')->getData());
             $licence->setMemberLicenceDeadline(new DateTime('+1 year '.$licence->getMemberLicenceMedicalCertificate()->format('Y-m-d')));
 
-            $member->addMemberLicences($licence);
-
-            $member->setMemberActualClub($club);
-            $member->setMemberLastLicence($licence);
+            $member->setMemberFirstname($form->get('MemberFirstName')->getData());
+            $member->setMemberName($form->get('MemberName')->getData());
+            $member->setMemberSex($form->get('MemberSex')->getData());
+            $member->setMemberAddress($form->get('MemberAddress')->getData());
+            $member->setMemberZip($form->get('MemberZip')->getData());
+            $member->setMemberCity($form->get('MemberCity')->getData());
+            $member->setMemberCountry($form->get('MemberCountry')->getData());
+            $member->setMemberEmail($form->get('MemberEmail')->getData());
+            $member->setMemberPhone($form->get('MemberPhone')->getData());
+            $member->setMemberBirthday($form->get('MemberBirthday')->getData());
+            $member->setMemberComment($form->get('MemberComment')->getData());
+            $member->setMemberCity($form->get('MemberCity')->getData());
             $member->setMemberStartPractice($form->get('MemberLicenceMedicalCertificate')->getData());
-            $member->setMemberPhoto($form['MemberPhoto']->getData() == null ? 'nophoto.png' : $photoUploader->upload($form['MemberPhoto']->getData()));
+            $member->setMemberPhoto(is_null($form['MemberPhoto']->getData()) ? 'nophoto.png' : $photoUploader->upload($form['MemberPhoto']->getData()));
 
-            $grade = new Grade();
+            $grade = $member->getMemberLastGrade();
 
-            $rank = $form->get('GradeRank')->getData() == null ? 1 : $form->get('GradeRank')->getData();
+            $rank = is_null($form->get('GradeRank')->getData()) ? 1 : $form->get('GradeRank')->getData();
 
             $grade->setGradeRank($rank);
-            $grade->setGradeMember($member);
             $grade->setGradeDate($licence->getMemberLicenceUpdate());
-            $grade->setGradeClub($club);
 
             if ($grade->getGradeRank() < 7)
             {
@@ -813,28 +862,8 @@ class SecretariatController extends AbstractController
                 $grade->setGradeStatus(6);
             }
 
-            $member->setMemberLastGrade($grade);
-            $member->addMemberGrades($grade);
-
             $licence->setMemberLicenceGrade($grade);
 
-            $stamp = new MemberPrintout();
-
-            $stamp->setMemberPrintoutAction(1);
-            $stamp->setMemberPrintoutLicence($licence);
-            $stamp->setMemberPrintoutCreation(new DateTime('today'));
-
-            $card = new MemberPrintout();
-
-            $card->setMemberPrintoutAction(2);
-            $card->setMemberPrintoutLicence($licence);
-            $card->setMemberPrintoutCreation(new DateTime('today'));
-
-            $entityManager = $this->getDoctrine()->getManager();
-
-            $entityManager->persist($member);
-            $entityManager->persist($stamp);
-            $entityManager->persist($card);
             $entityManager->flush();
 
             return $this->redirectToRoute('secretariat-membersActive', array('club' => $club->getClubId()));
@@ -853,7 +882,15 @@ class SecretariatController extends AbstractController
     {
         $licence_history = $this->getDoctrine()->getRepository(MemberLicence::class)->findBy(['member_licence' => $member->getMemberId()], ['member_licence_id' => 'DESC']);
 
-        $next_renew = $licence_history[0]->getMemberLicenceDeadline() < new DateTime('+3 month today');
+        if ($licence_history[0]->getMemberLicenceStatus() == 1)
+        {
+            $next_renew = $licence_history[0]->getMemberLicenceDeadline() < new DateTime('+3 month today');
+        }
+        else
+        {
+            $next_renew = $licence_history[1]->getMemberLicenceDeadline() < new DateTime('+3 month today');
+        }
+
 
         return $this->render('Secretariat/Club/Member/licence_detail.html.twig', array('member' => $member, 'club' => $club, 'licence_history' => $licence_history, 'next_renew' => $next_renew));
     }
@@ -890,65 +927,24 @@ class SecretariatController extends AbstractController
     }
 
     /**
-     * @param Club $club
      * @param Member $member
+     * @param FileGenerator $fileGenerator
      * @return BinaryFileResponse
      */
-    #[Route('/formulaire-renouvellement/{member<\d+>}/club/{club<\d+>}', name:'memberFormRenew')]
-    public function memberFormRenew(Club $club, Member $member): BinaryFileResponse
+    #[Route('/formulaire-renouvellement/{member<\d+>}', name:'memberFormRenew')]
+    public function memberFormRenew(Member $member, FileGenerator $fileGenerator, MemberTools $memberTools): BinaryFileResponse
     {
-        $listData = new ListData();
+        $memberTools->setMember($member);
 
-        $output_file = "./licence_out.rtf";
+        $member->getMemberBirthday() >= new DateTime('-14 year today') ? $isChild = true : $isChild = false;
 
-        $fh = fopen($output_file, 'a') or die('can\'t open file');
+        $licenceForm = $this->renderView('Forms/licence_form.html.twig', array('club' => $member->getMemberActualClub(), 'member' => $member, 'memberTools' => $memberTools, 'isChild' => $isChild));
 
-        $file = file_get_contents('../private/licence.rtf', true);
+        $filename = str_replace(' ', '', $member->getMemberId().'-'.$member->getMemberName().'.pdf');
 
-        $file = substr($file, 1, strlen($file)-2);
+        $pdf = $fileGenerator->pdfGenerator('../private/' . $filename, $licenceForm);
 
-        fwrite($fh, '{');
-
-        $old = array('\{\{TITRE\}\}', '\{\{SEXE\}\}', '\{\{NOM\}\}', '\{\{PRENOM\}\}', '\{\{DOJO_ID\}\}', '\{\{DOJO_NOM\}\}', '\{\{ADRESSE\}\}', '\{\{CODE_POSTALE\}\}', '\{\{LOCALITE\}\}', '\{\{DATE_DE_NAISSANCE\}\}', '\{\{GSM\}\}', '\{\{EMAIL\}\}', '\{\{LICENCE_ID\}\}', '\{\{DATE_ECHEANCE_FR\}\}', '\{\{ENFANT\}\}', '\{\{ADULTE\}\}', '\{\{PAYS\}\}');
-
-        $children_limit = new DateTime('-14 year today');
-
-        $newphrase = '';
-
-        unset($new);
-
-        if ($member->getMemberSex() == 1)
-        {
-            $title='Monsieur';
-            $sex='Masculin';
-        }
-        else
-        {
-            $title='Madamme';
-            $sex="Féminin";
-        }
-
-        if ($member->getMemberBirthday() > $children_limit)
-        {
-            $children='X';
-            $adult='';
-        }
-        else
-        {
-            $children='';
-            $adult='X';
-        }
-
-        $new = array($title, utf8_decode($sex), utf8_decode($member->getMemberName()), utf8_decode($member->getMemberFirstname()), utf8_decode($club->getClubId()), utf8_decode($club->getClubName()), utf8_decode($member->getMemberAddress()), utf8_decode($member->getMemberZip()), utf8_decode($member->getMemberCity()), utf8_decode($member->getMemberBirthday()->format('d/m/Y')), utf8_decode($member->getMemberPhone()), utf8_decode($member->getMemberEmail()), utf8_decode($member->getMemberId()), utf8_decode($member->getMemberLastLicence()->getMemberLicenceDeadline()->format('d/m/Y')), $children, $adult, utf8_decode($listData->getCountryName($member->getMemberCountry())));
-
-        $newphrase .= str_replace($old, $new, $file);
-
-        fwrite($fh, $newphrase);
-
-        fwrite($fh, '}');
-        fclose($fh);
-
-        $response = new BinaryFileResponse($output_file);
+        $response = new BinaryFileResponse($pdf);
         $response->setContentDisposition(ResponseHeaderBag::DISPOSITION_ATTACHMENT);
 
         return $response->deleteFileAfterSend();
@@ -965,17 +961,31 @@ class SecretariatController extends AbstractController
     #[Route('/renouvellement-licence/{member<\d+>}/club/{club<\d+>}', name:'memberLicenceRenew')]
     public function memberLicenceRenew(SessionInterface $session, Request $request, Club $club, Member $member): RedirectResponse|Response
     {
-        $licence_old = $member->getMemberLastLicence();
+        $oldLicence = $member->getMemberLastLicence();
 
-        $licence_old->setMemberLicenceStatus(0);
+        $oldLicence->setMemberLicenceStatus(0);
 
-        $licence_new = new MemberLicence();
+        $licence = $this->getDoctrine()->getRepository(MemberLicence::class)->findOneBy(['member_licence' => $member->getMemberId(), 'member_licence_status' => 2]);
 
-        $licence_new->setMemberLicence($member);
-        $licence_new->setMemberLicenceClub($club);
-        $licence_new->setMemberLicenceUpdate(new DateTime('today'));
-        $licence_new->setMemberLicenceDeadline(new DateTime('+1 year '.$licence_old->getMemberLicenceDeadline()->format('Y-m-d')));
-        $licence_new->setMemberLicenceStatus(1);
+        $isNew = false;
+
+        if (is_null($licence))
+        {
+            $isNew = true;
+
+            $licence = new MemberLicence();
+
+            $licence->setMemberLicence($member);
+            $licence->setMemberLicenceClub($club);
+
+            if (strtotime('+1 year', $oldLicence->getMemberLicenceDeadline()->getTimestamp()) > strtotime('today'))
+            {
+                $licence->setMemberLicenceDeadline(new DateTime('+1 year '.$oldLicence->getMemberLicenceDeadline()->format('Y-m-d')));
+            }
+        }
+
+        $licence->setMemberLicenceUpdate(new DateTime('today'));
+        $licence->setMemberLicenceStatus($isNew ? 2 : 1);
 
         if ($member->getMemberLastGrade() == null)
         {
@@ -992,13 +1002,13 @@ class SecretariatController extends AbstractController
 
         if ($kyu)
         {
-            $form = $this->createForm(MemberType::class, $licence_new, array('form' => 'licenceRenewKyu', 'data_class' => MemberLicence::class));
+            $form = $this->createForm(MemberType::class, $licence, array('form' => 'licenceRenewKyu', 'data_class' => MemberLicence::class));
 
-            $form->get('GradeKyuRank')->setData($licence_old->getMemberLicenceGrade() == null ? null : $licence_old->getMemberLicenceGrade()->getGradeRank());
+            $form->get('GradeKyuRank')->setData(is_null($oldLicence->getMemberLicenceGrade()) ?: $oldLicence->getMemberLicenceGrade()->getGradeRank());
         }
         else
         {
-            $form = $this->createForm(MemberType::class, $licence_new, array('form' => 'licenceRenew', 'data_class' => MemberLicence::class));
+            $form = $this->createForm(MemberType::class, $licence, array('form' => 'licenceRenew', 'data_class' => MemberLicence::class));
         }
 
         $form->handleRequest($request);
@@ -1007,30 +1017,13 @@ class SecretariatController extends AbstractController
         {
             $entityManager = $this->getDoctrine()->getManager();
 
-            $licence_new = $form->getData();
-
-            $stamp = new MemberPrintout();
-
-            $stamp->setMemberPrintoutAction(1);
-            $stamp->setMemberPrintoutLicence($licence_new);
-            $stamp->setMemberPrintoutCreation(new DateTime('today'));
-
-            if ($licence_new->getMemberLicenceClub() != $licence_old->getMemberLicenceClub())
-            {
-                $card = new MemberPrintout();
-
-                $card->setMemberPrintoutAction(2);
-                $card->setMemberPrintoutLicence($licence_new);
-                $card->setMemberPrintoutCreation(new DateTime('today'));
-
-                $entityManager->persist($card);
-            }
+            $licence = $form->getData();
 
             if ($kyu && ($member->getMemberLastGrade()->getGradeRank() < $form->get('GradeKyuRank')->getData()))
             {
                 $grade = new Grade();
     
-                $grade->setGradeDate($licence_new->getMemberLicenceUpdate());
+                $grade->setGradeDate($licence->getMemberLicenceUpdate());
                 $grade->setGradeRank($form->get('GradeKyuRank')->getData());
                 $grade->setGradeMember($member);
                 $grade->setGradeStatus(4);
@@ -1038,16 +1031,28 @@ class SecretariatController extends AbstractController
     
                 $member->setMemberLastGrade($grade);
     
-                $licence_new->setMemberLicenceGrade($grade);
+                $licence->setMemberLicenceGrade($grade);
     
                 $entityManager->persist($grade);
             }
 
-            $member->setMemberLastLicence($licence_new);
-            $member->setMemberActualClub($licence_new->getMemberLicenceClub());
+            if ($isNew)
+            {
+                $entityManager->persist($licence);
+            }
+            else
+            {
+                $member->setMemberLastLicence($licence);
+                $member->setMemberActualClub($licence->getMemberLicenceClub());
 
-            $entityManager->persist($licence_new);
-            $entityManager->persist($stamp);
+                $stamp = new MemberPrintout();
+
+                $stamp->setMemberPrintoutLicence($licence);
+                $stamp->setMemberPrintoutCreation(new DateTime(('today')));
+
+                $entityManager->persist($stamp);
+            }
+
             $entityManager->flush();
 
             if ($session->get('origin') == 'active')
@@ -1107,7 +1112,7 @@ class SecretariatController extends AbstractController
         {
             $form = $this->createForm(MemberType::class, $renew, array('form' => 'licenceRenewKyu', 'data_class' => MemberLicence::class));
 
-            $form->get('GradeKyuRank')->setData($member->getMemberLastGrade() == null ? null : $member->getMemberLastGrade()->getGradeRank());
+            $form->get('GradeKyuRank')->setData($member->getMemberLastGrade()?->getGradeRank());
         }
         else
         {
@@ -1153,6 +1158,25 @@ class SecretariatController extends AbstractController
 
             $renew->setMemberLicenceUpdate(new DateTime('today'));
 
+            if ($renew->getMemberLicenceStatus() == 2)
+            {
+                $renew->setMemberLicenceStatus(1);
+
+                $oldLicence = $member->getMemberLastLicence();
+
+                $oldLicence->setMemberLicenceStatus(0);
+
+                $member->setMemberLastLicence($renew);
+                $member->setMemberActualClub($renew->getMemberLicenceClub());
+
+                $stamp = new MemberPrintout();
+
+                $stamp->setMemberPrintoutLicence($renew);
+                $stamp->setMemberPrintoutCreation(new DateTime('today'));
+
+                $entityManager->persist($stamp);
+            }
+
             $entityManager->flush();
 
             if ($session->get('origin') == 'active')
@@ -1166,6 +1190,58 @@ class SecretariatController extends AbstractController
         }
 
         return $this->render('Secretariat/Club/Member/licence_renew.html.twig', array('form' => $form->createView()));
+    }
+
+    /**
+     * @return RedirectResponse|Response
+     */
+    #[Route('/liste-timbre-a-imprimer/', name:'stampForPrinting')]
+    public function stampForPrinting(): RedirectResponse|Response
+    {
+        $stamps = $this->getDoctrine()->getRepository(MemberPrintout::class)->getStampForPrinting();
+
+        $list = array();
+
+        foreach ($stamps as $stamp)
+        {
+            $list[$stamp['ClubId']]['Id'] = $stamp['ClubId'];
+            $list[$stamp['ClubId']]['Name'] = $stamp['ClubName'];
+            $list[$stamp['ClubId']]['Members'][] = $stamp;
+        }
+
+        ksort($list);
+
+        return $this->render('Secretariat/Licence/stampForPrintingList.html.twig', array('list' => $list));
+    }
+
+    /**
+     * @param Club|null $club
+     * @return RedirectResponse|Response
+     */
+    #[Route('/liste-timbre-a-imprimer/valider/{club<\d+>}', name:'stampForPrintingValidate')]
+    public function stampForPrintingValidate(?Club $club=null): RedirectResponse|Response
+    {
+        $stamps = $this->getDoctrine()->getRepository(MemberPrintout::class)->getStampForPrinting($club);
+
+        $list = array();
+
+        foreach ($stamps as $stamp)
+        {
+            $list[] = $stamp['StampId'];
+        }
+
+        $printouts = $this->getDoctrine()->getRepository(MemberPrintout::class)->findBy(['member_printout_id' => $list]);
+
+        $entityManager = $this->getDoctrine()->getManager();
+
+        foreach ($printouts as $printout)
+        {
+            $printout->setMemberPrintoutDone(new DateTime('today'));
+
+            $entityManager->flush();
+        }
+
+        return $this->redirectToRoute('secretariat-stampForPrinting');
     }
 
     /**
@@ -1485,17 +1561,17 @@ class SecretariatController extends AbstractController
 
             $photoUploader->delete($member->getMemberPhoto());
 
-            $modification->getMemberModificationPhoto()     != null ? $member->setMemberPhoto($modification->getMemberModificationPhoto()) : null;
-            $modification->getMemberModificationFirstname() != null ? $member->setMemberFirstname($modification->getMemberModificationFirstname()) : null;
-            $modification->getMemberModificationName()      != null ? $member->setMemberName($modification->getMemberModificationName()) : null;
-            $modification->getMemberModificationBirthday()  != null ? $member->setMemberBirthday($modification->getMemberModificationBirthday()) : null;
-            $modification->getMemberModificationAddress()   != null ? $member->setMemberAddress($modification->getMemberModificationAddress()) : null;
-            $modification->getMemberModificationZip()       != null ? $member->setMemberZip($modification->getMemberModificationZip()) : null;
-            $modification->getMemberModificationCity()      != null ? $member->setMemberCity($modification->getMemberModificationCity()) : null;
-            $modification->getMemberModificationCountry()   != null ? $member->setMemberCountry($modification->getMemberModificationCountry()) : null;
-            $modification->getMemberModificationEmail()     != null ? $member->setMemberEmail($modification->getMemberModificationEmail()) : null;
-            $modification->getMemberModificationPhone()     != null ? $member->setMemberPhone($modification->getMemberModificationPhone()) : null;
-            $modification->getMemberModificationAikikaiId() != null ? $member->setMemberAikikaiId($modification->getMemberModificationAikikaiId()) : null;
+            is_null($modification->getMemberModificationPhoto())     ?: $member->setMemberPhoto($modification->getMemberModificationPhoto());
+            is_null($modification->getMemberModificationFirstname()) ?: $member->setMemberFirstname($modification->getMemberModificationFirstname());
+            is_null($modification->getMemberModificationName())      ?: $member->setMemberName($modification->getMemberModificationName());
+            is_null($modification->getMemberModificationBirthday())  ?: $member->setMemberBirthday($modification->getMemberModificationBirthday());
+            is_null($modification->getMemberModificationAddress())   ?: $member->setMemberAddress($modification->getMemberModificationAddress());
+            is_null($modification->getMemberModificationZip())       ?: $member->setMemberZip($modification->getMemberModificationZip());
+            is_null($modification->getMemberModificationCity())      ?: $member->setMemberCity($modification->getMemberModificationCity());
+            is_null($modification->getMemberModificationCountry())   ?: $member->setMemberCountry($modification->getMemberModificationCountry());
+            is_null($modification->getMemberModificationEmail())     ?: $member->setMemberEmail($modification->getMemberModificationEmail());
+            is_null($modification->getMemberModificationPhone())     ?: $member->setMemberPhone($modification->getMemberModificationPhone());
+            is_null($modification->getMemberModificationAikikaiId()) ?: $member->setMemberAikikaiId($modification->getMemberModificationAikikaiId());
 
             $member->setMemberModification(null);
 
@@ -1566,30 +1642,6 @@ class SecretariatController extends AbstractController
         {
             $commission = $form->getData();
 
-            switch($commission->getCommissionRole())
-            {
-                case 1 :
-                    $commission->setCommissionRole(null);
-                    break;
-                case 2 :
-                    $commission->setCommissionRole('ROLE_CT');
-                    break;
-                case 3 :
-                    $commission->setCommissionRole('ROLE_STAGES');
-                    break;
-                case 4 :
-                    $commission->setCommissionRole('ROLE_CA');
-                    break;
-                case 5 :
-                    $commission->setCommissionRole('ROLE_CP');
-                    break;
-                case 6 :
-                    $commission->setCommissionRole('ROLE_BANK');
-                    break;
-                default :
-                    $commission->setCommissionRole(null);
-            }
-
             $entityManager = $this->getDoctrine()->getManager();
 
             $entityManager->persist($commission);
@@ -1605,12 +1657,48 @@ class SecretariatController extends AbstractController
      * @param Commission $commission
      * @return Response
      */
-    #[Route('/detail-commission/{commission<\d+>}', name:'commissionDetail')]
+    #[Route('/detail-commission/{commission<\d+>}', name:'commissionDetails')]
     public function commissionDetail(Commission $commission): Response
     {
         $members = $this->getDoctrine()->getRepository(CommissionMember::class)->getCommissionMembers($commission->getCommissionId());
 
         return $this->render('Secretariat/Commission/detail.html.twig', array('members' => $members, 'commission' => $commission));
+    }
+
+    /**
+     * @param Commission $commission
+     * @return Response
+     */
+    #[Route('/historique-commission/{commission<\d+>}', name:'commissionHistory')]
+    public function commissionHistory(Commission $commission): Response
+    {
+        $members = $this->getDoctrine()->getRepository(CommissionMember::class)->getCommissionHistory($commission->getCommissionId());
+
+        return $this->render('Secretariat/Commission/history.html.twig', array('members' => $members, 'commission' => $commission));
+    }
+
+    /**
+     * @param Request $request
+     * @param Commission $commission
+     * @return Response
+     */
+    #[Route('/renommer-commission/{commission<\d+>}', name:'commissionRename')]
+    public function commissionRename(Request $request, Commission $commission): Response
+    {
+        $form = $this->createForm(SecretariatType::class, $commission, array('form' => 'commissionRename', 'data_class' => Commission::class));
+
+        $form->handleRequest($request);
+
+        if ($form->isSubmitted() && $form->isValid())
+        {
+            $entityManager = $this->getDoctrine()->getManager();
+
+            $entityManager->flush();
+
+            return $this->redirectToRoute('secretariat-commissionIndex');
+        }
+
+        return $this->render('Secretariat/Commission/rename.html.twig', array('form' => $form->createView()));
     }
 
     /**
@@ -1621,7 +1709,11 @@ class SecretariatController extends AbstractController
     #[Route('/commission/{commission<\d+>}/ajouter-membre', name:'commissionMemberAdd')]
     public function commissionMemberAdd(Request $request, Commission $commission): RedirectResponse|Response
     {
+        $today = new DateTime('today');
+
         $commission_member = new CommissionMember();
+
+        $commission_member->setCommissionMemberDateIn($today);
 
         $form = $this->createForm(SecretariatType::class, $commission_member, array('form' => 'commissionMemberAdd', 'data_class' => CommissionMember::class));
 
@@ -1629,29 +1721,27 @@ class SecretariatController extends AbstractController
 
         if ($form->isSubmitted() && $form->isValid())
         {
-            $today = new DateTime('today');
-
             $member = $this->getDoctrine()->getRepository(Member::class)->findOneBy(['member_id' => $form->get('MemberLicence')->getData()]);
 
             if (is_null($member))
             {
-                return $this->redirectToRoute('secretariat-commissionDetail', array('commission' => $commission->getCommissionId()));
+                return $this->redirectToRoute('secretariat-commissionDetails', array('commission' => $commission->getCommissionId()));
             }
-            elseif (!is_null($this->getDoctrine()->getRepository(CommissionMember::class)->findOneBy(['commission_member' => $form->get('MemberLicence')->getData(), 'commission' => $commission])))
+
+            if (!is_null($this->getDoctrine()->getRepository(CommissionMember::class)->findOneBy(['commission_member' => $member->getMemberId(), 'commission' => $commission, 'commission_member_date_out' => null])))
             {
-                return $this->redirectToRoute('secretariat-commissionDetail', array('commission' => $commission->getCommissionId()));
+                return $this->redirectToRoute('secretariat-commissionDetails', array('commission' => $commission->getCommissionId()));
             }
 
             $commission_member->setCommission($commission);
             $commission_member->setCommissionMember($member);
-            $commission_member->setCommissionMemberDateIn($today);
 
             $entityManager = $this->getDoctrine()->getManager();
 
             $entityManager->persist($commission_member);
             $entityManager->flush();
 
-            return $this->redirectToRoute('secretariat-commissionDetail', array('commission' => $commission->getCommissionId()));
+            return $this->redirectToRoute('secretariat-commissionDetails', array('commission' => $commission->getCommissionId()));
         }
 
         return $this->render('Secretariat/Commission/add_member.html.twig', array('form' => $form->createView()));
@@ -1663,26 +1753,26 @@ class SecretariatController extends AbstractController
      * @param Member $member
      * @return RedirectResponse|Response
      */
-    #[Route('/commission/{commission<\d+>}/supprimer-membre/{member<\d+>}', name:'commissionMemberDelete')]
-    public function commissionMemberDelete(Request $request, Commission $commission, Member $member): RedirectResponse|Response
+    #[Route('/commission/{commission<\d+>}/modifier-membre/{member<\d+>}', name:'commissionMemberEdit')]
+    public function commissionMemberEdit(Request $request, Commission $commission, Member $member): RedirectResponse|Response
     {
         $commission_member = $this->getDoctrine()->getRepository(CommissionMember::class)->findOneBy(['commission_member' => $member, 'commission' => $commission]);
 
-        $form = $this->createForm(SecretariatType::class, $member, array('form' => 'commissionMemberDelete', 'data_class' => Member::class));
+        $form = $this->createForm(SecretariatType::class, $commission_member, array('form' => 'commissionMemberEdit', 'data_class' => CommissionMember::class));
+
+        $form->get('MemberId')->setData($member->getMemberId());
+        $form->get('MemberName')->setData($member->getMemberName());
+        $form->get('MemberFirstname')->setData($member->getMemberFirstname());
 
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid())
         {
-            $today = new DateTime('today');
-
-            $commission_member->setCommissionMemberDateOut($today);
-
             $entityManager = $this->getDoctrine()->getManager();
 
             $entityManager->flush();
 
-            return $this->redirectToRoute('secretariat-commissionDetail', array('commission' => $commission->getCommissionId()));
+            return $this->redirectToRoute('secretariat-commissionDetails', array('commission' => $commission->getCommissionId()));
         }
 
         return $this->render('Secretariat/Commission/delete_member.html.twig', array('form' => $form->createView()));
@@ -1852,28 +1942,24 @@ class SecretariatController extends AbstractController
     }
 
     /**
-     * @param Request $request
+     * @param Club $club
      * @return Response
      */
-    #[Route('/imprimer-timbres', name:'printStamp')]
-    public function printStamp(Request $request): Response
+    #[Route('/imprimer-timbres/{club<\d+>}', name:'printStamp')]
+    public function printStamp(Club $club): Response
     {
-        $stamps = null;
+        $stamps = $this->getDoctrine()->getRepository(MemberPrintout::class)->getStampForPrinting($club);
 
-        $form = $this->createForm(SecretariatType::class, $stamps, array('form' => 'printStamp', 'data_class' => null));
+        $list = array();
 
-        $form->handleRequest($request);
-
-        if ($form->isSubmitted() && $form->isValid())
+        foreach ($stamps as $member)
         {
-            $stamps = explode(",", $form->get('MemberList')->getData());
-
-            $members = $this->getDoctrine()->getRepository(Member::class)->findBy(['member_id' => $stamps]);
-
-            return $this->render('Secretariat/stamps.html.twig', array('members' => $members));
+            $list[] = $member['Id'];
         }
 
-        return $this->render('Secretariat/stamp_form.html.twig', array('form' => $form->createView()));
+        $members = $this->getDoctrine()->getRepository(Member::class)->findBy(['member_id' => $list]);
+
+        return $this->render('Secretariat/stamps.html.twig', array('members' => $members));
     }
 
     /**
@@ -1904,10 +1990,11 @@ class SecretariatController extends AbstractController
     /**
      * @param Request $request
      * @param Club $club
+     * @param FileGenerator $fileGenerator
      * @return BinaryFileResponse|Response
      */
     #[Route('/generer-formulaires-renouvellement/{club<\d+>}', name:'formRenewCreate')]
-    public function formRenewCreate(Request $request, Club $club): BinaryFileResponse|Response
+    public function formRenewCreate(Request $request, Club $club, FileGenerator $fileGenerator, MemberTools $memberTools): BinaryFileResponse|Response
     {
         $period = null;
 
@@ -1917,72 +2004,37 @@ class SecretariatController extends AbstractController
 
         if ($form->isSubmitted() && $form->isValid())
         {
-            $listData = new ListData();
+            $zip = new ZipArchive();
 
-            $output_file = "./licence_out.rtf";
-
-            $fh = fopen($output_file, 'a') or die('can\'t open file');
-
-            $file = file_get_contents('../private/licence.rtf', true);
-
-            $file = substr($file, 1, strlen($file)-2);
-
-            fwrite($fh, '{');
-
-            $old = array('\{\{TITRE\}\}', '\{\{SEXE\}\}', '\{\{NOM\}\}', '\{\{PRENOM\}\}', '\{\{DOJO_ID\}\}', '\{\{DOJO_NOM\}\}', '\{\{ADRESSE\}\}', '\{\{CODE_POSTALE\}\}', '\{\{LOCALITE\}\}', '\{\{DATE_DE_NAISSANCE\}\}', '\{\{GSM\}\}', '\{\{EMAIL\}\}', '\{\{LICENCE_ID\}\}', '\{\{DATE_ECHEANCE_FR\}\}', '\{\{ENFANT\}\}', '\{\{ADULTE\}\}', '\{\{PAYS\}\}');
-
-            $children_limit = new DateTime('-14 year today');
+            $zip->open('../private/licences.zip', ZipArchive::CREATE);
 
             $members = $this->getDoctrine()->getRepository(Member::class)->getClubRenewForms($club, $form->get('Start')->getData()->format('Y-m-d'), $form->get('End')->getData()->format('Y-m-d'));
 
-            $i = 0;
-
             foreach ($members as $member)
             {
-                if ($i != 0)
-                {
-                    fwrite($fh, '{\page}');
-                }
+                $memberTools->setMember($member);
 
-                $newphrase = '';
+                $member->getMemberBirthday() >= new DateTime('-14 year today') ? $isChild = true : $isChild = false;
 
-                unset($new);
+                $licenceForm = $this->renderView('Forms/licence_form.html.twig', array('club' => $club, 'member' => $member, 'memberTools' => $memberTools, 'isChild' => $isChild));
 
-                if ($member['Sex'] == 1)
-                {
-                    $title='Monsieur';
-                    $sex='Masculin';
-                }
-                else
-                {
-                    $title='Madamme';
-                    $sex="Féminin";
-                }
+                $filename = str_replace(' ', '', $member->getMemberId().'-'.$member->getMemberName().'.pdf');
 
-                if ($member['Birthday'] > $children_limit)
-                {
-                    $children='X';
-                    $adult='';
-                }
-                else
-                {
-                    $children='';
-                    $adult='X';
-                }
+                $pdf = $fileGenerator->pdfGenerator('../private/' . $filename, $licenceForm);
 
-                $new = array($title, utf8_decode($sex), utf8_decode($member['Name']), utf8_decode($member['FirstName']), utf8_decode($club->getClubId()), utf8_decode($club->getClubName()), utf8_decode($member['Address']), utf8_decode($member['Zip']), utf8_decode($member['City']), utf8_decode($member['Birthday']->format('d/m/Y')), utf8_decode($member['Phone']), utf8_decode($member['Email']), utf8_decode($member['Id']), utf8_decode($member['Deadline']->format('d/m/Y')), $children, $adult, utf8_decode($listData->getCountryName($member['Country'])));
+                $fileList[] = $pdf;
 
-                $newphrase .= str_replace($old, $new, $file);
-
-                fwrite($fh, $newphrase);
-
-                $i++;
+                $zip->addFile($pdf, $filename);
             }
 
-            fwrite($fh, '}');
-            fclose($fh);
+            $zip->close();
 
-            $response = new BinaryFileResponse($output_file);
+            foreach ($fileList as $file)
+            {
+                unlink($file);
+            }
+
+            $response = new BinaryFileResponse('../private/licences.zip');
             $response->setContentDisposition(ResponseHeaderBag::DISPOSITION_ATTACHMENT);
 
             return $response->deleteFileAfterSend();

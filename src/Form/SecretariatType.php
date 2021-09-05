@@ -54,11 +54,14 @@ class SecretariatType extends AbstractType
             case 'commissionCreate':
                 $this->commissionCreate($builder);
                 break;
+            case 'commissionRename':
+                $this->commissionRename($builder);
+                break;
             case 'commissionMemberAdd':
                 $this->commissionMemberAdd($builder);
                 break;
-            case 'commissionMemberDelete':
-                $this->commissionMemberDelete($builder);
+            case 'commissionMemberEdit':
+                $this->commissionMemberEdit($builder);
                 break;
             case 'printStamp':
                 $this->printStamp($builder);
@@ -210,12 +213,20 @@ class SecretariatType extends AbstractType
      */
     private function commissionCreate(FormBuilderInterface $builder)
     {
-        $list = new ListData();
-
         $builder
             ->add('CommissionName', TextType::class, array('label' => 'Nom : '))
-            ->add('CommissionRole', ChoiceType::class, array('label' => 'Type d\'accès : ', 'placeholder' => 'Choississez un type d\'accès', 'choices' => $list->getAccessType()))
             ->add('Submit', SubmitType::class, array('label' => 'Ajouter'))
+        ;
+    }
+
+    /**
+     * @param FormBuilderInterface $builder
+     */
+    private function commissionRename(FormBuilderInterface $builder)
+    {
+        $builder
+            ->add('CommissionName', TextType::class, array('label' => 'Nouveau Nom : '))
+            ->add('Submit', SubmitType::class, array('label' => 'Renommer'))
         ;
     }
 
@@ -226,6 +237,7 @@ class SecretariatType extends AbstractType
     {
         $builder
             ->add('MemberLicence', IntegerType::class, array('label' => 'N° de licence : ', 'mapped' => false))
+            ->add('CommissionMemberDateIn', DateType::class, array('label' => 'Début de mandat : ', 'widget' => 'single_text'))
             ->add('Submit', SubmitType::class, array('label' => 'Ajouter'))
         ;
     }
@@ -233,11 +245,15 @@ class SecretariatType extends AbstractType
     /**
      * @param FormBuilderInterface $builder
      */
-    private function commissionMemberDelete(FormBuilderInterface $builder)
+    private function commissionMemberEdit(FormBuilderInterface $builder)
     {
         $builder
-            ->add('MemberId', IntegerType::class, array('label' => 'N° de licence : ', 'disabled' => true))
-            ->add('Submit', SubmitType::class, array('label' => 'Supprimer'))
+            ->add('MemberId', IntegerType::class, array('label' => 'N° de licence : ', 'disabled' => true, 'mapped' => false))
+            ->add('MemberFirstname', TextType::class, array('label' => 'Prénom : ', 'disabled' => true, 'mapped' => false))
+            ->add('MemberName', TextType::class, array('label' => 'Nom : ', 'disabled' => true, 'mapped' => false))
+            ->add('CommissionMemberDateIn', DateType::class, array('label' => 'Début de mandat : ', 'widget' => 'single_text'))
+            ->add('CommissionMemberDateOut', DateType::class, array('label' => 'Fin de mandat : ', 'widget' => 'single_text', 'required' => false))
+            ->add('Submit', SubmitType::class, array('label' => 'Modifier'))
         ;
     }
 

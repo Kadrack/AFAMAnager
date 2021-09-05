@@ -1,0 +1,156 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html lang="fr">
+
+<head>
+    <title>formulaire</title>
+    <meta http-equiv="Content-Type" content="text/html">
+</head>
+
+<body style="width: 700px; font-size: 12px; margin-top: 0">
+    <div style="border-bottom: solid 2px">
+        <div style="display: block; float: left; margin: 10px">
+            <img src="https://dev.aikido.be/images/logo.jpg" alt="Logo"/>
+        </div>
+        <div style="font-size: 10px; margin-bottom: 2px">
+            <p>Seule fédération reconnue par la Ministère de la Communauté française et le Centre Mondial de Tokyo - Affiliée au Belgian Aïkikaï - Membre de la Fédération Internationale d’Aïkido, de l’AISF et du C.O.I.B.</p>
+            <p style="white-space: pre; margin: 0">Siège : Place Marcel Broodthaers 8 boîte 5 à 1060 Bruxelles                                                                                    Numéro BCE : 0419.398.108</p>
+            <p style="margin: 0">Téléphone : +32 (0)2 537.47.62</p>
+            <p style="margin: 0">Url : <a href="https://www.aikido.be" target="_blank" >www.aikido.be</a> E-mail : <a href="mailto:afa@aikido.be" >afa@aikido.be</a></p>
+        </div>
+    </div>
+
+    <div style="border-top: solid 1px; border-bottom: solid 1px; margin-top: 2px">
+        <p style="font-size: 14px; font-weight: bold; text-decoration: underline; margin-top: 0; margin-bottom: 2px; text-align: center">FORMULAIRE DE RENOUVELLEMENT DE LICENCE FEDERALE</p>
+        <table style="width: available">
+            <tr>
+                <td width="25%">Licence N° {{ member.getMemberId }}</td>
+                <td width="25%">Club N° {{ club.getClubId }}</td>
+                <td width="50%">Nom du Club : {{ club.getClubName|title }}</td>
+            </tr>
+        </table>
+    </div>
+
+    <div>
+        <p style="font-size: 14px; font-weight: bold; text-decoration: underline; margin-top: 0; margin-bottom: 0">Coordonnées du-e la pratiquant-e concerné-e et informations relatives à la pratique sportive</p>
+        <table style="width: available">
+            <tr>
+                <td width="25%">Nom : {{ member.getMemberName }}</td>
+                <td width="25%">Prénom : {{ member.getMemberFirstname }}</td>
+                <td width="25%">Né(e) le : {{ member.getMemberBirthday|date("d/m/Y") }}</td>
+                <td width="25%">Sexe : {% if member.getMemberSex == 2 %}Féminin{% else %}Masculin{% endif %}</td>
+            </tr>
+            <tr>
+                <td colspan="2">Adresse : {{ member.getMemberAddress }}</td>
+                <td>Code Postal : {{ member.getMemberZip }}</td>
+                <td>Localité : {{ member.getMemberCity }}</td>
+            </tr>
+            <tr>
+                <td>Pays : {{ member.getMemberCountry }}</td>
+                <td>Téléphone : {{ member.getMemberPhone }}</td>
+                <td colspan="2">E-mail : {{ member.getMemberEmail }}</td>
+            </tr>
+        </table>
+    </div>
+
+    <div>
+        <p style="font-size: 14px; font-weight: bold; text-decoration: underline; margin-top: 0; margin-bottom: 0">Informations concernant la pratique sportive</p>
+        <table style="width: available">
+            <tr>
+                <td width="33%">Grade : {{ listData.getGrade(member.getMemberLastGrade.getGradeRank) }}</td>
+                <td width="33%">Titre ADEPS : {% if memberTools.getAdepsTitle > 0 %}{{ listData.getGradeTitle(memberTools.getAdepsTitle) }}{% else %}Aucun{% endif %}</td>
+                <td width="33%">Titre Aïkikaï : {% if memberTools.getAikikaiTitle > 0 %}{{ listData.getGradeTitle(memberTools.getAikikaiTitle) }}{% else %}Aucun{% endif %}</td>
+            </tr>
+        </table>
+    </div>
+
+    <div>
+        <p style="font-size: 14px; font-weight: bold; text-decoration: underline; margin-top: 0; margin-bottom: 0">Informations relatives à la cotisation fédérale et à son coût</p>
+        <p style="margin: 4px;">Date d’échéance du dernier renouvellement de la licence : {{ member.getMemberLastLicence.getMemberLicenceDeadline|date("d/m/Y") }}</p>
+        <p style="margin: 4px;">Interruption de la pratique du ..../..../........ au ..../..../........</p>
+        <p style="margin: 0">
+            <label><input type="checkbox" {% if isChild %}checked{% endif %} />Le-a pratiquant-e a moins de 14 ans et paie la somme de 30,00 € au club.</label><br />
+            <label><input type="checkbox" {% if not isChild %}checked{% endif %} />Le-a pratiquant-e a plus de 14 ans et paie la somme de 35,00 € au club.</label><br />
+            <label><input type="checkbox" />Le-a pratiquant-e demande un duplicata de sa licence et paie la somme de 2,50 € au club.</label><br />
+            <label><input type="checkbox" />Le-a pratiquant-e demande un timbre Yudansha* et paie la somme de 12,00 € au club.</label>
+        </p>
+        <p style="font-size: 10px; margin: 0">* Le timbre pour les Yudansha est une cotisation annuelle au Hombu Dojo Tokyo (non obligatoire en Belgique).</p>
+        <p>Date du virement bancaire du club vers le compte de l’A.F.A. : ..../..../.......</p>
+    </div>
+
+    <div style="border: solid 2px">
+        <p style="font-size: 14px; font-weight: bold; text-decoration: underline; margin: 0">Attestation sur l’honneur</p>
+        <p style="margin: 0">
+            Soussigné-e, ............................................................................................., né-e ..../..../........ déclare par la présente sur l’honneur ne pas présenter de contre-indication médicale à la pratique de l’Aïkido. Je reconnais avoir été dûment informé qu’un certificat médical de non contre-indication à la pratique sportive, bien que non obligatoire, est préconisé par  ’A.F.A. dans le cadre de sa politique de prévention des risques pour la santé dans le Sport (Décret du 3 avril 2014 et ses arrêtés d’exécution), en particulier pour les pratiquants présentant des pathologies particulières. Je reconnais et accepte que la couverture d’assurance qui m’est accordée pour la pratique de l’Aïkido par l’intermédiaire de l’A.F.A. pourra m’être refusée en cas de déclaration fausse ou inexacte de ma part et je décharge l’A.F.A. et mon club de toute responsabilité dans ce cas.<br />
+            <br />
+            Certifié sincère et fait à .................................................................., le ..../..../........<br />
+            <br />
+            Signature du membre ou de son représentant légal (pour le-a mineur-e)
+        </p>
+        <p style="text-align: center; font-weight: bold">OU</p>
+        <p style="font-size: 14px; font-weight: bold; text-decoration: underline; margin: 0">Attestation médicale</p>
+        <p style="margin-top: 0">Je soussigné-e, .............................................................................................., docteur en médecine, déclare avoir examiné la personne précitée et confirme que celle-ci est apte à pratiquer l’Aïkido.</p>
+        <p>
+            Date de la visite médicale : ..../..../........<br />
+            <br />
+            Cachet et signature du médecin :
+        </p>
+    </div>
+
+    <div style="page-break-after: always">
+        <p>PS : N’oubliez pas de compléter le verso du présent document</p>
+    </div>
+
+    <div style="border-bottom: solid 2px">
+        <div style="display: block; float: left; margin: 10px">
+            <img src="https://dev.aikido.be/images/Image1.jpg" alt="Logo"/>
+        </div>
+        <div style="font-size: 10px; margin-bottom: 2px">
+            <p>Seule fédération reconnue par la Ministère de la Communauté française et le Centre Mondial de Tokyo - Affiliée au Belgian Aïkikaï - Membre de la Fédération Internationale d’Aïkido, de l’AISF et du C.O.I.B.</p>
+            <p style="white-space: pre; margin: 0">Siège : Place Marcel Broodthaers 8 boîte 5 à 1060 Bruxelles                                                                                    Numéro BCE : 0419.398.108</p>
+            <p style="margin: 0">Téléphone : +32 (0)2 537.47.62</p>
+            <p style="margin: 0">Url : <a href="https://www.aikido.be" target="_blank" >www.aikido.be</a> E-mail : <a href="mailto:afa@aikido.be" >afa@aikido.be</a></p>
+        </div>
+    </div>
+
+    <div style="border-top: solid 1px; margin-top: 2px">
+        <p style="font-size: 14px; font-weight: bold; text-decoration: underline; margin: 0">Déclaration du/de la pratiquant-e ou de son représentant légal concernant l’usage des données à caractère privé</p>
+        <p style="margin-top: 0">
+            -&gt;Je comprends que l’AFA traite certaines de mes données dans le cadre de la souscription à une assurance de responsabilité civile rendue obligatoire par le décret du 8 décembre 2006 visant l’organisation et le subventionnement du sport en communauté française.<br />
+            <br />
+            ->Je remets à l’AFA l’attestation sur l’honneur ou l’attestation médicale qui confirme l’aptitude à pratiquer l’Aïkido. Cette attestation est remise dans le cadre de l’obligation imposée par le Décret sport Décret du 3 avril 2014 relatif à la prévention des risques pour la santé dans le sport.<br />
+            <br />
+            -&gt;J’ai pris connaissance de la politique de l’AFA en matière de protection de la vie privée en ce compris mon droit à accéder à mes données, à les faire rectifier, à les faire supprimer.<br />
+            <br />
+            -&gt;Je déclare que les informations communiquées sont exactes, complètes et sincères. Je m’engage à contacter l’AFA pour mettre à jour ces données au besoin, en ce compris pour mettre à jour mon portrait.<br />
+            <br />
+            -&gt;J’autorise, en agissant comme représentant légal d’un-e mineur-e, le professeur principal du dojo (ou, en son absence, son assistant-e le-a plus âgé-e) à assister le-adit-e mineur-e pendant tout contrôle anti-dopage éventuel qui pourrait le-a concerner.<br />
+            <br />
+            -&gt;Je suis conscient, et j’accepte, qu’en participant aux activités organisées par l’AFA que mon image ou celle de la personne dont je suis le-a représentant-e légal-e puisse être utilisée afin de promouvoir la pratique de l’Aïkido ce qui constitue un intérêt légitime pour la fédération.<br />
+        </p>
+    </div>
+
+    <div>
+        <p style="font-size: 14px; font-weight: bold; text-decoration: underline; margin: 0">Coordonnées du représentant légal du/de la mineur(e) concerné(e) par la présente</p>
+        <table style="width: available">
+            <tr>
+                <td width="40%">Nom, Prénom : </td>
+                <td width="40%">E-mail :</td>
+            </tr>
+            <tr>
+                <td>Adresse : </td>
+                <td>Téléphone :</td>
+            </tr>
+            <tr>
+                <td>Signatures : </td>
+            </tr>
+        </table>
+        <table style="width: available">
+            <tr>
+                <td width="20%"></td>
+                <td style="vertical-align: bottom"><br /><br /><br />Demandeur-euse<br />(ou représentant-e légal-e décrit ci-dessus)</td>
+                <td style="vertical-align: bottom"><br /><br /><br />Responsable du club</td>
+            </tr>
+        </table>
+    </div>
+</body>
+</html>
