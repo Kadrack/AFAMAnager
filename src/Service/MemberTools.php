@@ -101,6 +101,13 @@ class MemberTools
     {
         $this->member = $member;
 
+        $this->grades        = null;
+        $this->licences      = null;
+        $this->stages        = null;
+        $this->titles        = null;
+        $this->titleAdeps    = null;
+        $this->titleAikikai  = null;
+
         return $this->member;
     }
 
@@ -480,7 +487,7 @@ class MemberTools
     {
         if ($photo != null)
         {
-            $memberModification->setMemberModificationPhoto($this->photoUploader->upload($photo, $memberModification?->getMemberModificationPhoto() !== null ? $memberModification->getMemberModificationPhoto() : ""));
+            $memberModification->setMemberModificationPhoto($this->photoUploader->upload($photo, $memberModification->getMemberModificationPhoto() !== null ? $memberModification->getMemberModificationPhoto() : ""));
         }
 
         if ($this->member->getMemberModification() == null)

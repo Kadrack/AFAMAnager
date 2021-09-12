@@ -58,6 +58,7 @@ class MemberRepository extends ServiceEntityRepository
 
     /**
      * @param Club $club
+     * @param bool $new
      * @return array|null
      */
     public function getClubActiveMembers(Club $club, bool $new = false): ?array

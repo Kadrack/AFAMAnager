@@ -929,6 +929,7 @@ class SecretariatController extends AbstractController
     /**
      * @param Member $member
      * @param FileGenerator $fileGenerator
+     * @param MemberTools $memberTools
      * @return BinaryFileResponse
      */
     #[Route('/formulaire-renouvellement/{member<\d+>}', name:'memberFormRenew')]
@@ -1991,6 +1992,7 @@ class SecretariatController extends AbstractController
      * @param Request $request
      * @param Club $club
      * @param FileGenerator $fileGenerator
+     * @param MemberTools $memberTools
      * @return BinaryFileResponse|Response
      */
     #[Route('/generer-formulaires-renouvellement/{club<\d+>}', name:'formRenewCreate')]
