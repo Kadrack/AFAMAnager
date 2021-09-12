@@ -882,15 +882,7 @@ class SecretariatController extends AbstractController
     {
         $licence_history = $this->getDoctrine()->getRepository(MemberLicence::class)->findBy(['member_licence' => $member->getMemberId()], ['member_licence_id' => 'DESC']);
 
-        if ($licence_history[0]->getMemberLicenceStatus() == 1)
-        {
-            $next_renew = $licence_history[0]->getMemberLicenceDeadline() < new DateTime('+3 month today');
-        }
-        else
-        {
-            $next_renew = $licence_history[1]->getMemberLicenceDeadline() < new DateTime('+3 month today');
-        }
-
+        $next_renew = $licence_history[0]->getMemberLicenceDeadline() < new DateTime('+3 month today');
 
         return $this->render('Secretariat/Club/Member/licence_detail.html.twig', array('member' => $member, 'club' => $club, 'licence_history' => $licence_history, 'next_renew' => $next_renew));
     }

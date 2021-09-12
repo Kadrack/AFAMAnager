@@ -67,7 +67,7 @@
                 <td class="align-middle">{{ member.FirstName|title }}</td>
                 <td class="align-middle">{{ member.Name|title }}</td>
                 <td class="align-middle">{{ member.ClubId }}</td>
-                <td class="align-middle">{{ member.Deadline|date("d/m/Y") }}{% if member.Status == 2 %}<img alt="" src=" {{ asset('images/pass.png') }}" />{% else %}<img alt="" src=" {{ asset('images/fail.png') }}" />{% endif %}</td>
+                <td class="align-middle">{{ member.Deadline|date("d/m/Y") }}{% if member.Status == 1 %}<img alt="" src=" {{ asset('images/pass.png') }}" />{% else %}<img alt="" src=" {{ asset('images/fail.png') }}" />{% endif %}</td>
                 <td class="align-middle">{{ member.Date|date("d/m/Y") }}</td>
                 <td class="align-middle">{{ (member.Payment / 100)|number_format(2, ',', '.') }} €</td>
                 <td class="align-middle"><a class="btn btn-primary" href="{{ path('accounting-paymentLicenceValidationUpdate', {'memberLicence': member.RenewId}) }}">Modifier</a></td>

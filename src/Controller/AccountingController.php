@@ -63,7 +63,8 @@ class AccountingController extends AbstractController
     }
 
     /**
-     * @param \Symfony\Component\HttpFoundation\Request $request
+     * @param Request $request
+     * @param MemberTools $memberTools
      * @return Response
      * @throws \Exception
      */
@@ -183,12 +184,13 @@ class AccountingController extends AbstractController
 
         if ($form->isSubmitted() && $form->isValid())
         {
+            $club   = $this->getDoctrine()->getRepository(Club::class)->findOneBy(['club_id' => $form->get('Club')->getData()]);
             $member = $this->getDoctrine()->getRepository(Member::class)->findOneBy(['member_id' => $form->get('LicenceNumber')->getData()]);
 
             $memberLicence->setMemberLicence($member);
+            $memberLicence->setMemberLicenceClub($club);
             $memberLicence->setMemberLicenceStatus(2);
             $memberLicence->setMemberLicenceUpdate(new DateTime('today'));
-            $memberLicence->setMemberLicenceClub($form->get('Club')->getData());
             $memberLicence->setMemberLicencePaymentDate($form->get('MemberLicencePaymentDate')->getData());
             $memberLicence->setMemberLicencePaymentValue($form->get('MemberLicencePaymentValue')->getData());
             $memberLicence->setMemberLicenceDeadline(new DateTime('+1 year ' . $member->getMemberLastLicence()->getMemberLicenceDeadline()->format('Y-m-d')));
