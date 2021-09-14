@@ -87,7 +87,7 @@ class AccountingController extends AbstractController
 
             foreach ($members as $member)
             {
-                $memberLicence = $this->getDoctrine()->getRepository(MemberLicence::class)->findOneBy(['member_licence' => $member->getMemberId(), 'member_licence_status' => 2]);
+                $memberLicence = $this->getDoctrine()->getRepository(MemberLicence::class)->findOneBy(['member_licence' => $member->getMemberId(), 'member_licence_status' => array(2, 3)]);
 
                 if (is_null($memberLicence))
                 {
