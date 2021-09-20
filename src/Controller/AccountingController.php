@@ -81,8 +81,6 @@ class AccountingController extends AbstractController
 
             $club = $this->getDoctrine()->getRepository(Club::class)->findOneBy(['club_id' => $form->get('Club')->getData()]);
 
-            $isNew = false;
-
             $entityManager = $this->getDoctrine()->getManager();
 
             foreach ($members as $member)
@@ -91,13 +89,14 @@ class AccountingController extends AbstractController
 
                 if (is_null($memberLicence))
                 {
-                    $isNew = true;
-
                     $memberLicence = new MemberLicence();
 
                     $memberLicence->setMemberLicence($member);
                     $memberLicence->setMemberLicenceClub($club);
+                    $memberLicence->setMemberLicenceStatus(2);
                     $memberLicence->setMemberLicenceDeadline(new DateTime('+1 year ' . $member->getMemberLastLicence()->getMemberLicenceDeadline()->format('Y-m-d')));
+
+                    $entityManager->persist($memberLicence);
                 }
                 else
                 {
@@ -119,11 +118,8 @@ class AccountingController extends AbstractController
                 }
 
                 $memberLicence->setMemberLicenceUpdate(new DateTime('today'));
-                $memberLicence->setMemberLicenceStatus($isNew ? 2 : 1);
                 $memberLicence->setMemberLicencePaymentDate($form->get('MemberLicencePaymentDate')->getData());
                 $memberLicence->setMemberLicencePaymentValue($form->get('MemberLicencePaymentValue')->getData());
-
-                !$isNew ?: $entityManager->persist($memberLicence);
             }
 
             for ($i = 0; $i < $form->get('NewMember')->getData(); $i++)

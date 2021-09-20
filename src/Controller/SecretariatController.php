@@ -960,11 +960,11 @@ class SecretariatController extends AbstractController
 
         $licence = $this->getDoctrine()->getRepository(MemberLicence::class)->findOneBy(['member_licence' => $member->getMemberId(), 'member_licence_status' => 2]);
 
-        $isNew = false;
+        $status = 1;
 
         if (is_null($licence))
         {
-            $isNew = true;
+            $status = 2;
 
             $licence = new MemberLicence();
 
@@ -977,8 +977,8 @@ class SecretariatController extends AbstractController
             }
         }
 
+        $licence->setMemberLicenceStatus($status);
         $licence->setMemberLicenceUpdate(new DateTime('today'));
-        $licence->setMemberLicenceStatus($isNew ? 2 : 1);
 
         if ($member->getMemberLastGrade() == null)
         {
@@ -1029,7 +1029,7 @@ class SecretariatController extends AbstractController
                 $entityManager->persist($grade);
             }
 
-            if ($isNew)
+            if ($status == 2)
             {
                 $entityManager->persist($licence);
             }
